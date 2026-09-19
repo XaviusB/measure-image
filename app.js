@@ -10,7 +10,7 @@ const translations = {
     persistentMode: "Persistent mode", persistentHint: "Keep your work saved", resetWorkspace: "Reset workspace", uploadImages: "Upload images",
     resetConfirm: "Reset the workspace and delete all images, calibration, and measurements?",
     resetDone: "Workspace reset.",
-    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom", dropImage: "Drop an image here",
+    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
@@ -27,7 +27,7 @@ const translations = {
     persistentMode: "Mode persistant", persistentHint: "Conserver votre travail", resetWorkspace: "Réinitialiser l’espace", uploadImages: "Importer des images",
     resetConfirm: "Réinitialiser l’espace et supprimer toutes les images, l’étalonnage et les mesures ?",
     resetDone: "Espace réinitialisé.",
-    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer", dropImage: "Déposez une image ici",
+    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
@@ -457,6 +457,43 @@ function setActiveImage(id) {
   draw();
 }
 
+function resetWorkspace() {
+  if (!window.confirm(translations[state.lang].resetConfirm)) return;
+  state.images.forEach((image) => {
+    if (image.url.startsWith("blob:")) URL.revokeObjectURL(image.url);
+  });
+  state.images = [];
+  state.activeImageId = null;
+  state.calibrationLine = null;
+  state.currentLine = null;
+  state.calibrationEdit = null;
+  state.measurementEdit = null;
+  state.measurementDraftColor = null;
+  state.lastMeasurementPixels = null;
+  state.measurements = [];
+  state.persistent = false;
+  state.zoom = 1;
+  state.pan = { x: 0, y: 0 };
+  state.displayUnit = "cm";
+  state.unitSystem = "metric";
+  localStorage.removeItem("measurely-state");
+  $("#persistentMode").checked = false;
+  $("#activeImageName").textContent = translations[state.lang].noImageSelected;
+  $("#imageDimensions").textContent = "—";
+  $("#referenceValue").value = 20;
+  $("#calibrationUnit").value = "cm";
+  $("#measurementUnit").value = "cm";
+  $("#zoomRange").value = 100;
+  $("#zoomLabel").textContent = "100%";
+  $("#canvasEmpty").hidden = false;
+  renderThumbnails();
+  refreshScaleText();
+  $("#resultPixels").textContent = translations[state.lang].drawLineHint;
+  updateCanvasCursor();
+  draw();
+  showToast(translations[state.lang].resetDone);
+}
+
 async function addFiles(files) {
   const validFiles = [...files].filter((file) => file.type.startsWith("image/"));
   if (!validFiles.length) return showToast("Please choose an image file.");
@@ -733,6 +770,7 @@ $("#persistentMode").addEventListener("change", (event) => {
   }
   draw();
 });
+$("#clearWorkspaceButton").addEventListener("click", resetWorkspace);
 $("#zoomRange").addEventListener("input", (event) => {
   state.zoom = Number(event.target.value) / 100;
   $("#zoomLabel").textContent = `${event.target.value}%`;
