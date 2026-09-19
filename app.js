@@ -48,6 +48,7 @@ const state = {
   activeImageId: null,
   calibrationLine: null,
   currentLine: null,
+  calibrationEdit: null,
   lastMeasurementPixels: null,
   isPanning: false,
   pointerStart: null,
@@ -232,6 +233,66 @@ function distance(a, b) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
+function cloneLine(line) {
+  return {
+    start: { ...line.start },
+    end: { ...line.end }
+  };
+}
+
+function pointToSegmentDistance(point, start, end) {
+  const segmentX = end.x - start.x;
+  const segmentY = end.y - start.y;
+  const segmentLengthSquared = segmentX ** 2 + segmentY ** 2;
+  if (!segmentLengthSquared) return distance(point, start);
+  const projection = Math.max(0, Math.min(1, ((point.x - start.x) * segmentX + (point.y - start.y) * segmentY) / segmentLengthSquared));
+  return distance(point, {
+    x: start.x + projection * segmentX,
+    y: start.y + projection * segmentY
+  });
+}
+
+function calibrationHit(point) {
+  if (!state.calibrationLine) return null;
+  const line = imageLineToCanvas(state.calibrationLine);
+  if (distance(point, line.start) <= 14) return "start";
+  if (distance(point, line.end) <= 14) return "end";
+  if (pointToSegmentDistance(point, line.start, line.end) <= 10) return "line";
+  return null;
+}
+
+function calibrationResizeCursor() {
+  const line = imageLineToCanvas(state.calibrationLine);
+  if (!line) return "ew-resize";
+  const deltaX = line.end.x - line.start.x;
+  const deltaY = line.end.y - line.start.y;
+  const angle = Math.abs(Math.atan2(deltaY, deltaX) * 180 / Math.PI) % 180;
+  if (angle < 22.5 || angle >= 157.5) return "ew-resize";
+  if (angle >= 67.5 && angle < 112.5) return "ns-resize";
+  return (deltaX > 0) === (deltaY > 0) ? "nwse-resize" : "nesw-resize";
+}
+
+function updateCanvasCursor(point) {
+  if (state.mode !== "pan") {
+    canvas.style.cursor = "crosshair";
+    return;
+  }
+  if (state.calibrationEdit) {
+    canvas.style.cursor = state.calibrationEdit.type === "line" ? "grabbing" : "none";
+    return;
+  }
+  if (state.isPanning) {
+    canvas.style.cursor = "grabbing";
+    return;
+  }
+  const hit = point ? calibrationHit(point) : null;
+  canvas.style.cursor = hit === "start" || hit === "end"
+    ? calibrationResizeCursor()
+    : hit === "line"
+      ? "move"
+      : "grab";
+}
+
 function calibrationPixels() {
   if (!state.calibrationLine) return 0;
   return distance(state.calibrationLine.start, state.calibrationLine.end);
@@ -354,7 +415,8 @@ function openFilePicker() { $("#fileInput").click(); }
 function setMode(mode) {
   state.mode = mode;
   state.currentLine = null;
-  canvas.style.cursor = mode === "pan" ? "grab" : "crosshair";
+  state.calibrationEdit = null;
+  updateCanvasCursor();
   draw();
   if (mode === "calibration") showToast("Draw a line over a known distance.");
   if (mode === "measure") showToast("Draw a measurement line on the image.");
@@ -432,20 +494,53 @@ function setMeasurementUnit(unit) {
 
 canvas.addEventListener("pointerdown", (event) => {
   if (!activeImage()) return;
-  canvas.setPointerCapture(event.pointerId);
   const point = pointerPosition(event);
+  canvas.setPointerCapture(event.pointerId);
   state.pointerStart = point;
+  if (state.mode === "pan" && state.calibrationLine) {
+    const hit = calibrationHit(point);
+    if (hit) {
+      state.calibrationEdit = {
+        type: hit,
+        start: toImagePoint(point),
+        original: cloneLine(state.calibrationLine)
+      };
+      updateCanvasCursor(point);
+      return;
+    }
+  }
   if (state.mode === "calibration" || state.mode === "measure") {
     state.currentLine = { start: point, end: point };
   } else {
     state.isPanning = true;
-    canvas.style.cursor = "grabbing";
+    updateCanvasCursor(point);
   }
 });
 
 canvas.addEventListener("pointermove", (event) => {
   const point = pointerPosition(event);
-  if (state.currentLine) {
+  if (state.calibrationEdit) {
+    const currentImagePoint = toImagePoint(point);
+    const edit = state.calibrationEdit;
+    if (edit.type === "start") {
+      state.calibrationLine.start = currentImagePoint;
+    } else if (edit.type === "end") {
+      state.calibrationLine.end = currentImagePoint;
+    } else {
+      const delta = {
+        x: currentImagePoint.x - edit.start.x,
+        y: currentImagePoint.y - edit.start.y
+      };
+      state.calibrationLine = {
+        start: { x: edit.original.start.x + delta.x, y: edit.original.start.y + delta.y },
+        end: { x: edit.original.end.x + delta.x, y: edit.original.end.y + delta.y }
+      };
+    }
+    activeImage().calibrationLine = state.calibrationLine;
+    refreshScaleText();
+    updateCanvasCursor(point);
+    draw();
+  } else if (state.currentLine) {
     state.currentLine.end = point;
     if (state.mode === "measure" && state.calibrationLine) {
       const pixels = distance(toImagePoint(state.currentLine.start), toImagePoint(state.currentLine.end));
@@ -462,14 +557,27 @@ canvas.addEventListener("pointermove", (event) => {
     state.pan.y += point.y - state.pointerStart.y;
     state.pointerStart = point;
     draw();
+  } else {
+    updateCanvasCursor(point);
   }
 });
 
-canvas.addEventListener("pointerup", () => {
-  if (state.currentLine) finishLine();
+canvas.addEventListener("pointerup", (event) => {
+  if (state.calibrationEdit) {
+    state.calibrationEdit = null;
+    activeImage().calibrationLine = state.calibrationLine;
+    refreshScaleText();
+    savePersistentState();
+  } else if (state.currentLine) {
+    finishLine();
+  }
   state.isPanning = false;
   state.pointerStart = null;
-  if (state.mode === "pan") canvas.style.cursor = "grab";
+  updateCanvasCursor(pointerPosition(event));
+});
+
+canvas.addEventListener("pointerleave", () => {
+  if (!state.calibrationEdit && !state.isPanning) updateCanvasCursor();
 });
 
 canvas.addEventListener("wheel", (event) => {
