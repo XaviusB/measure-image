@@ -36,6 +36,7 @@ const translations = {
 
 const unitToMeters = { mm: 0.001, cm: 0.01, m: 1, in: 0.0254, ft: 0.3048 };
 const unitLabels = { mm: "mm", cm: "cm", m: "m", in: "in", ft: "ft" };
+const measurementColors = ["#e76f51", "#2a9d8f", "#e9c46a", "#4d7cfe", "#c45edc", "#f28482", "#3a86ff"];
 const state = {
   lang: "en",
   unitSystem: "metric",
@@ -49,6 +50,8 @@ const state = {
   calibrationLine: null,
   currentLine: null,
   calibrationEdit: null,
+  measurementEdit: null,
+  measurementDraftColor: null,
   lastMeasurementPixels: null,
   isPanning: false,
   pointerStart: null,
@@ -109,6 +112,10 @@ function savePersistentState() {
   }));
 }
 
+function randomMeasurementColor() {
+  return measurementColors[Math.floor(Math.random() * measurementColors.length)];
+}
+
 function loadPersistentState() {
   try {
     const saved = JSON.parse(localStorage.getItem("measurely-state"));
@@ -116,7 +123,10 @@ function loadPersistentState() {
     state.persistent = true;
     $("#persistentMode").checked = true;
     state.calibrationLine = saved.calibrationSpace === "image" ? saved.calibrationLine || null : null;
-    state.measurements = saved.measurements || [];
+    state.measurements = (saved.measurements || []).map((measurement) => ({
+      ...measurement,
+      color: measurement.color || randomMeasurementColor()
+    }));
     state.displayUnit = saved.displayUnit || "cm";
     state.unitSystem = saved.unitSystem || "metric";
     $("#measurementUnit").value = state.displayUnit;
@@ -221,7 +231,12 @@ function draw() {
     ? state.currentLine
     : imageLineToCanvas(state.calibrationLine);
   drawLine(shownCalibration, "#7154d9", 2.5, state.mode === "calibration");
-  drawLine(state.currentLine && state.mode === "measure" ? state.currentLine : null, "#eb9461", 2.5, false);
+  if (state.persistent) {
+    state.measurements.forEach((measurement) => {
+      if (measurement.line) drawLine(imageLineToCanvas(measurement.line), measurement.color || "#eb9461", 2.5, false);
+    });
+  }
+  drawLine(state.currentLine && state.mode === "measure" ? state.currentLine : null, state.measurementDraftColor || "#eb9461", 2.5, false);
 }
 
 function pointerPosition(event) {
@@ -261,8 +276,7 @@ function calibrationHit(point) {
   return null;
 }
 
-function calibrationResizeCursor() {
-  const line = imageLineToCanvas(state.calibrationLine);
+function lineResizeCursor(line) {
   if (!line) return "ew-resize";
   const deltaX = line.end.x - line.start.x;
   const deltaY = line.end.y - line.start.y;
@@ -270,6 +284,23 @@ function calibrationResizeCursor() {
   if (angle < 22.5 || angle >= 157.5) return "ew-resize";
   if (angle >= 67.5 && angle < 112.5) return "ns-resize";
   return (deltaX > 0) === (deltaY > 0) ? "nwse-resize" : "nesw-resize";
+}
+
+function calibrationResizeCursor() {
+  return lineResizeCursor(imageLineToCanvas(state.calibrationLine));
+}
+
+function measurementHit(point) {
+  if (!state.persistent) return null;
+  for (let index = state.measurements.length - 1; index >= 0; index -= 1) {
+    const measurement = state.measurements[index];
+    if (!measurement.line) continue;
+    const line = imageLineToCanvas(measurement.line);
+    if (distance(point, line.start) <= 14) return { measurement, type: "start" };
+    if (distance(point, line.end) <= 14) return { measurement, type: "end" };
+    if (pointToSegmentDistance(point, line.start, line.end) <= 10) return { measurement, type: "line" };
+  }
+  return null;
 }
 
 function updateCanvasCursor(point) {
@@ -281,14 +312,27 @@ function updateCanvasCursor(point) {
     canvas.style.cursor = state.calibrationEdit.type === "line" ? "grabbing" : "none";
     return;
   }
+  if (state.measurementEdit) {
+    canvas.style.cursor = state.measurementEdit.type === "line" ? "grabbing" : "none";
+    return;
+  }
   if (state.isPanning) {
     canvas.style.cursor = "grabbing";
     return;
   }
-  const hit = point ? calibrationHit(point) : null;
-  canvas.style.cursor = hit === "start" || hit === "end"
+  const measurement = point ? measurementHit(point) : null;
+  if (measurement?.type === "start" || measurement?.type === "end") {
+    canvas.style.cursor = lineResizeCursor(imageLineToCanvas(measurement.measurement.line));
+    return;
+  }
+  if (measurement?.type === "line") {
+    canvas.style.cursor = "move";
+    return;
+  }
+  const calibration = point ? calibrationHit(point) : null;
+  canvas.style.cursor = calibration === "start" || calibration === "end"
     ? calibrationResizeCursor()
-    : hit === "line"
+    : calibration === "line"
       ? "move"
       : "grab";
 }
@@ -311,6 +355,10 @@ function convertFromCalibration(px, unit = state.displayUnit) {
   return (px / refPx) * referenceMeters / unitToMeters[unit];
 }
 
+function measurementPixels(measurement) {
+  return measurement.line ? distance(measurement.line.start, measurement.line.end) : measurement.pixels;
+}
+
 function refreshScaleText() {
   const pixels = calibrationPixels();
   const value = Number($("#referenceValue").value) || 0;
@@ -318,6 +366,17 @@ function refreshScaleText() {
   $("#scaleSummary").textContent = pixels ? `${value} ${unit} / ${Math.round(pixels)} px` : "Not calibrated";
   $("#calibrationBadge").innerHTML = pixels ? `✓ <span data-i18n="set">${translations[state.lang].set}</span>` : "—";
   $("#resultUnit").textContent = unitLabels[state.displayUnit];
+  state.measurements.forEach((measurement) => {
+    if (!measurement.line) return;
+    const pixels = measurementPixels(measurement);
+    const value = convertFromCalibration(pixels, measurement.unit);
+    if (value !== null) {
+      measurement.pixels = pixels;
+      measurement.value = value;
+    }
+  });
+  renderMeasurements();
+  updateCurrentResult();
 }
 
 function updateCurrentResult() {
@@ -340,15 +399,16 @@ function renderMeasurements() {
   }
   list.innerHTML = state.measurements.map((measurement, index) => `
     <div class="measurement-item">
-      <span class="measurement-line"></span>
+      <span class="measurement-line" style="--measurement-color: ${measurement.color || "#eb9461"}"></span>
       <span class="measurement-name">${measurement.name || `Measurement ${String(index + 1).padStart(2, "0")}`}</span>
-      <strong class="measurement-value">${formatValue(measurement.value, measurement.unit)}</strong>
+      <strong class="measurement-value" style="color: ${measurement.color || "#eb9461"}">${formatValue(measurement.value, measurement.unit)}</strong>
       <button type="button" class="delete-measurement" data-index="${index}" aria-label="Delete measurement">×</button>
     </div>
   `).join("");
   $$(".delete-measurement").forEach((button) => button.addEventListener("click", () => {
     state.measurements.splice(Number(button.dataset.index), 1);
     renderMeasurements();
+    draw();
     savePersistentState();
   }));
 }
@@ -416,6 +476,8 @@ function setMode(mode) {
   state.mode = mode;
   state.currentLine = null;
   state.calibrationEdit = null;
+  state.measurementEdit = null;
+  if (mode === "measure") state.measurementDraftColor = randomMeasurementColor();
   updateCanvasCursor();
   draw();
   if (mode === "calibration") showToast("Draw a line over a known distance.");
@@ -453,7 +515,17 @@ function finishLine() {
     updateCurrentResult();
     $("#resultPixels").textContent = `${Math.round(pixels)} px · ${value === null ? "Calibrate to get a real-world result" : "Unsaved measurement"}`;
     if (value !== null) {
-      state.measurements.unshift({ name: `Measurement ${String(state.measurements.length + 1).padStart(2, "0")}`, value, unit: state.displayUnit, pixels });
+      state.measurements.unshift({
+        name: `Measurement ${String(state.measurements.length + 1).padStart(2, "0")}`,
+        value,
+        unit: state.displayUnit,
+        pixels,
+        color: state.measurementDraftColor || randomMeasurementColor(),
+        line: {
+          start: toImagePoint(state.currentLine.start),
+          end: toImagePoint(state.currentLine.end)
+        }
+      });
       activeImage().measurements = state.measurements;
       renderMeasurements();
       savePersistentState();
@@ -497,6 +569,19 @@ canvas.addEventListener("pointerdown", (event) => {
   const point = pointerPosition(event);
   canvas.setPointerCapture(event.pointerId);
   state.pointerStart = point;
+  if (state.mode === "pan") {
+    const hit = measurementHit(point);
+    if (hit) {
+      state.measurementEdit = {
+        measurement: hit.measurement,
+        type: hit.type,
+        start: toImagePoint(point),
+        original: cloneLine(hit.measurement.line)
+      };
+      updateCanvasCursor(point);
+      return;
+    }
+  }
   if (state.mode === "pan" && state.calibrationLine) {
     const hit = calibrationHit(point);
     if (hit) {
@@ -540,6 +625,37 @@ canvas.addEventListener("pointermove", (event) => {
     refreshScaleText();
     updateCanvasCursor(point);
     draw();
+  } else if (state.measurementEdit) {
+    const currentImagePoint = toImagePoint(point);
+    const edit = state.measurementEdit;
+    const measurement = edit.measurement;
+    if (edit.type === "start") {
+      measurement.line.start = currentImagePoint;
+    } else if (edit.type === "end") {
+      measurement.line.end = currentImagePoint;
+    } else {
+      const delta = {
+        x: currentImagePoint.x - edit.start.x,
+        y: currentImagePoint.y - edit.start.y
+      };
+      measurement.line = {
+        start: { x: edit.original.start.x + delta.x, y: edit.original.start.y + delta.y },
+        end: { x: edit.original.end.x + delta.x, y: edit.original.end.y + delta.y }
+      };
+    }
+    const pixels = measurementPixels(measurement);
+    const value = convertFromCalibration(pixels, measurement.unit);
+    measurement.pixels = pixels;
+    if (value !== null) {
+      measurement.value = value;
+      state.lastMeasurementPixels = pixels;
+      updateCurrentResult();
+      $("#resultPixels").textContent = `${Math.round(pixels)} px · Live preview`;
+    }
+    activeImage().measurements = state.measurements;
+    renderMeasurements();
+    updateCanvasCursor(point);
+    draw();
   } else if (state.currentLine) {
     state.currentLine.end = point;
     if (state.mode === "measure" && state.calibrationLine) {
@@ -566,6 +682,11 @@ canvas.addEventListener("pointerup", (event) => {
   if (state.calibrationEdit) {
     state.calibrationEdit = null;
     activeImage().calibrationLine = state.calibrationLine;
+    refreshScaleText();
+    savePersistentState();
+  } else if (state.measurementEdit) {
+    state.measurementEdit = null;
+    activeImage().measurements = state.measurements;
     refreshScaleText();
     savePersistentState();
   } else if (state.currentLine) {
@@ -606,6 +727,7 @@ $("#persistentMode").addEventListener("change", (event) => {
     localStorage.removeItem("measurely-state");
     showToast("Persistent mode is off.");
   }
+  draw();
 });
 $("#zoomRange").addEventListener("input", (event) => {
   state.zoom = Number(event.target.value) / 100;

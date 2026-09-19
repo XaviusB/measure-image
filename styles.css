@@ -158,7 +158,7 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .list-empty { padding: 8px 0; color: #aaaab5; font-size: 10px; }
 .measurement-item { display: flex; align-items: center; gap: 9px; border-bottom: 1px solid #f3f2f6; padding: 9px 0; }
 .measurement-item:last-child { border: 0; }
-.measurement-line { width: 22px; height: 2px; background: var(--purple); transform: rotate(-18deg); }
+.measurement-line { width: 22px; height: 2px; background: var(--measurement-color, var(--purple)); transform: rotate(-18deg); }
 .measurement-name { color: #626372; flex: 1; font-size: 10px; }
 .measurement-value { color: var(--purple); font: 500 10px "DM Mono", monospace; }
 .delete-measurement { border: 0; background: none; color: #b6b6c0; padding: 0; font-size: 14px; }
