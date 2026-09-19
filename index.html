@@ -178,6 +178,17 @@
         </div>
       </main>
     </div>
+    <div class="modal-backdrop" id="resetModal" hidden>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle" aria-describedby="resetModalDescription">
+        <div class="modal-icon">↺</div>
+        <h2 id="resetModalTitle" data-i18n="resetModalTitle">Reset workspace?</h2>
+        <p id="resetModalDescription" data-i18n="resetModalDescription">This will permanently remove all images, calibration, and measurements from this workspace.</p>
+        <div class="modal-actions">
+          <button class="button button-secondary" id="cancelResetButton" type="button" data-i18n="cancel">Cancel</button>
+          <button class="button button-danger" id="confirmResetButton" type="button" data-i18n="confirmReset">Reset everything</button>
+        </div>
+      </section>
+    </div>
     <div class="toast" id="toast" role="status"></div>
     <script src="app.js"></script>
   </body>

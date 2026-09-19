@@ -8,7 +8,8 @@ const translations = {
     tipText: "Calibrate once, then measure as many times as you like.", readyToMeasure: "READY TO MEASURE",
     heroTitle: "Measure with confidence.", heroSubtitle: "Turn any image into a precise measuring surface.",
     persistentMode: "Persistent mode", persistentHint: "Keep your work saved", resetWorkspace: "Reset workspace", uploadImages: "Upload images",
-    resetConfirm: "Reset the workspace and delete all images, calibration, and measurements?",
+    resetModalTitle: "Reset workspace?", resetModalDescription: "This will permanently remove all images, calibration, and measurements from this workspace.",
+    cancel: "Cancel", confirmReset: "Reset everything",
     resetDone: "Workspace reset.",
     imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
@@ -25,7 +26,8 @@ const translations = {
     tipText: "Calibrez une fois, puis mesurez autant de fois que nécessaire.", readyToMeasure: "PRÊT À MESURER",
     heroTitle: "Mesurez en toute confiance.", heroSubtitle: "Transformez chaque image en surface de mesure précise.",
     persistentMode: "Mode persistant", persistentHint: "Conserver votre travail", resetWorkspace: "Réinitialiser l’espace", uploadImages: "Importer des images",
-    resetConfirm: "Réinitialiser l’espace et supprimer toutes les images, l’étalonnage et les mesures ?",
+    resetModalTitle: "Réinitialiser l’espace ?", resetModalDescription: "Toutes les images, l’étalonnage et les mesures de cet espace seront définitivement supprimés.",
+    cancel: "Annuler", confirmReset: "Tout supprimer",
     resetDone: "Espace réinitialisé.",
     imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
@@ -458,7 +460,6 @@ function setActiveImage(id) {
 }
 
 function resetWorkspace() {
-  if (!window.confirm(translations[state.lang].resetConfirm)) return;
   state.images.forEach((image) => {
     if (image.url.startsWith("blob:")) URL.revokeObjectURL(image.url);
   });
@@ -492,6 +493,17 @@ function resetWorkspace() {
   updateCanvasCursor();
   draw();
   showToast(translations[state.lang].resetDone);
+}
+
+function openResetModal() {
+  $("#resetModal").hidden = false;
+  document.body.classList.add("modal-open");
+  $("#cancelResetButton").focus();
+}
+
+function closeResetModal() {
+  $("#resetModal").hidden = true;
+  document.body.classList.remove("modal-open");
 }
 
 async function addFiles(files) {
@@ -593,6 +605,7 @@ function updateLanguage(lang) {
   });
   $$(".language-button").forEach((button) => button.classList.toggle("active", button.dataset.language === lang));
   $("#measurementUnit").setAttribute("aria-label", translations[lang].measurementUnit);
+  if (!activeImage()) $("#activeImageName").textContent = translations[lang].noImageSelected;
   renderMeasurements();
   refreshScaleText();
 }
@@ -770,7 +783,15 @@ $("#persistentMode").addEventListener("change", (event) => {
   }
   draw();
 });
-$("#clearWorkspaceButton").addEventListener("click", resetWorkspace);
+$("#clearWorkspaceButton").addEventListener("click", openResetModal);
+$("#cancelResetButton").addEventListener("click", closeResetModal);
+$("#confirmResetButton").addEventListener("click", () => {
+  closeResetModal();
+  resetWorkspace();
+});
+$("#resetModal").addEventListener("click", (event) => {
+  if (event.target === $("#resetModal")) closeResetModal();
+});
 $("#zoomRange").addEventListener("input", (event) => {
   state.zoom = Number(event.target.value) / 100;
   $("#zoomLabel").textContent = `${event.target.value}%`;
@@ -787,6 +808,10 @@ canvasWrap.addEventListener("dragover", (event) => { event.preventDefault(); can
 canvasWrap.addEventListener("dragleave", () => canvasWrap.classList.remove("drag-over"));
 canvasWrap.addEventListener("drop", (event) => { event.preventDefault(); canvasWrap.classList.remove("drag-over"); addFiles(event.dataTransfer.files); });
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#resetModal").hidden) {
+    closeResetModal();
+    return;
+  }
   if (event.code === "Space" && document.activeElement.tagName !== "INPUT") {
     event.preventDefault();
     if (state.mode === "pan") canvas.style.cursor = "grab";

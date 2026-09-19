@@ -106,6 +106,8 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .canvas-empty strong { font-size: 14px; }
 .canvas-empty span { font-size: 11px; color: #9394a1; margin-bottom: 9px; }
 .button-secondary { background: #fff; color: var(--purple); border: 1px solid #d9d3fa; }
+.button-danger { color: #fff; background: #bd5964; }
+.button-danger:hover { background: #a94450; }
 .canvas-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px 13px; }
 .image-meta { display: flex; align-items: center; gap: 7px; color: #9b9ca9; font: 9px "DM Mono", monospace; }
 .meta-divider { color: #d2d1d9; }
@@ -168,6 +170,14 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .page-footer button { border: 0; padding: 0; background: none; color: var(--purple); font: inherit; }
 .toast { position: fixed; right: 24px; bottom: 24px; color: #fff; background: #24263a; border-radius: 6px; box-shadow: 0 8px 25px rgba(15,15,30,.2); padding: 11px 15px; font-size: 11px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .25s; }
 .toast.show { transform: translateY(0); opacity: 1; }
+.modal-open { overflow: hidden; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(22,24,40,.54); backdrop-filter: blur(3px); }
+.modal-backdrop[hidden] { display: none; }
+.modal-card { width: min(100%, 390px); border: 1px solid #eceaf4; border-radius: 12px; background: #fff; box-shadow: 0 24px 70px rgba(22,24,40,.24); padding: 25px; }
+.modal-icon { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 15px; border-radius: 10px; color: #b45f68; background: #fff1f2; font-size: 21px; }
+.modal-card h2 { margin: 0; font: 700 18px "Manrope", sans-serif; letter-spacing: -.5px; }
+.modal-card p { color: #858694; font-size: 12px; line-height: 1.55; margin: 9px 0 22px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 @media (max-width: 1050px) {
   .sidebar { width: 220px; }
