@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Measurely — precise, simple image measurements." />
+    <title>Measurely · Image measurement studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div>
+            <div class="brand-name">measurely<span class="brand-dot">.</span></div>
+            <div class="brand-caption">image measurement studio</div>
+          </div>
+        </div>
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <div class="nav-label" data-i18n="workspaceLabel">Workspace</div>
+          <button class="nav-item active" type="button">
+            <span class="nav-icon" aria-hidden="true">⌗</span><span data-i18n="overview">Overview</span>
+          </button>
+          <button class="nav-item" type="button" id="openUploadNav">
+            <span class="nav-icon" aria-hidden="true">＋</span><span data-i18n="addImages">Add images</span>
+            <span class="nav-count" id="imageCount">1</span>
+          </button>
+          <button class="nav-item" type="button" id="savedNav">
+            <span class="nav-icon" aria-hidden="true">◌</span><span data-i18n="savedMeasurements">Saved measurements</span>
+          </button>
+          <div class="nav-label nav-label-spaced" data-i18n="settingsLabel">Settings</div>
+          <button class="nav-item" type="button" id="preferencesNav">
+            <span class="nav-icon" aria-hidden="true">⚙</span><span data-i18n="preferences">Preferences</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="tip-card">
+            <div class="tip-icon">✦</div>
+            <div class="tip-title" data-i18n="tipTitle">Quick tip</div>
+            <p data-i18n="tipText">Calibrate once, then measure as many times as you like.</p>
+          </div>
+          <div class="user-row">
+            <div class="avatar">AM</div>
+            <div class="user-copy"><strong>Alex Morgan</strong><span>Personal workspace</span></div>
+            <button class="more-button" type="button" aria-label="More options">•••</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumb"><span data-i18n="workspaceLabel">Workspace</span><b>/</b><strong data-i18n="overview">Overview</strong></div>
+          <div class="topbar-actions">
+            <div class="language-switch" role="group" aria-label="Language">
+              <button type="button" class="language-button active" data-language="en">EN</button>
+              <button type="button" class="language-button" data-language="fr">FR</button>
+            </div>
+            <button type="button" class="help-button" aria-label="Help">?</button>
+            <div class="top-avatar">AM</div>
+          </div>
+        </header>
+
+        <div class="content-wrap">
+          <section class="page-heading">
+            <div>
+              <div class="eyebrow"><span class="status-dot"></span><span data-i18n="readyToMeasure">READY TO MEASURE</span></div>
+              <h1 data-i18n="heroTitle">Measure with confidence.</h1>
+              <p data-i18n="heroSubtitle">Turn any image into a precise measuring surface.</p>
+            </div>
+            <div class="heading-actions">
+              <label class="persistent-toggle">
+                <input type="checkbox" id="persistentMode" />
+                <span class="toggle-track"><span></span></span>
+                <span><strong data-i18n="persistentMode">Persistent mode</strong><small data-i18n="persistentHint">Keep your work saved</small></span>
+              </label>
+              <button class="button button-primary" id="uploadButton" type="button"><span class="button-plus">＋</span><span data-i18n="uploadImages">Upload images</span></button>
+              <input id="fileInput" type="file" accept="image/*" multiple hidden />
+            </div>
+          </section>
+
+          <section class="workspace-grid">
+            <div class="image-column">
+              <div class="panel image-panel">
+                <div class="panel-header image-panel-header">
+                  <div>
+                    <div class="panel-kicker" data-i18n="imageCanvas">IMAGE CANVAS</div>
+                    <h2 id="activeImageName">studio-board.svg</h2>
+                  </div>
+                  <div class="canvas-actions">
+                    <button class="icon-button" id="fitButton" type="button" title="Fit image">⌗</button>
+                    <button class="icon-button" id="resetButton" type="button" title="Reset view">↺</button>
+                    <button class="icon-button" type="button" title="More actions">•••</button>
+                  </div>
+                </div>
+                <div class="canvas-wrap" id="canvasWrap">
+                  <canvas id="measureCanvas" aria-label="Interactive image measurement canvas"></canvas>
+                  <div class="canvas-hint" id="canvasHint"><span>↔</span><span data-i18n="canvasHint">Drag to pan · Scroll to zoom</span></div>
+                  <div class="canvas-empty" id="canvasEmpty" hidden>
+                    <div class="empty-icon">↥</div>
+                    <strong data-i18n="dropImage">Drop an image here</strong>
+                    <span data-i18n="orBrowse">or browse from your device</span>
+                    <button type="button" class="button button-secondary" id="emptyUploadButton" data-i18n="chooseImage">Choose image</button>
+                  </div>
+                </div>
+                <div class="canvas-footer">
+                  <div class="image-meta"><span class="live-dot"></span><span id="imageDimensions">1200 × 800 px</span><span class="meta-divider">·</span><span id="zoomLabel">100%</span></div>
+                  <div class="zoom-controls">
+                    <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+                    <input type="range" id="zoomRange" min="25" max="300" value="100" aria-label="Zoom" />
+                    <button type="button" id="zoomIn" aria-label="Zoom in">＋</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="thumbnail-row" id="thumbnailRow"></div>
+            </div>
+
+            <aside class="inspector">
+              <div class="panel calibration-panel">
+                <div class="panel-header">
+                  <div class="section-title"><span class="step-number">1</span><div><div class="panel-kicker" data-i18n="calibration">CALIBRATION</div><h2 data-i18n="setScale">Set your scale</h2></div></div>
+                  <span class="completed-badge" id="calibrationBadge">✓ <span data-i18n="set">Set</span></span>
+                </div>
+                <p class="panel-description" data-i18n="calibrationDescription">Draw a line over a known distance to create your reference.</p>
+                <button type="button" class="calibration-action" id="calibrationButton">
+                  <span class="ruler-icon">↔</span>
+                  <span><strong data-i18n="redoCalibration">Redo calibration</strong><small data-i18n="drawReference">Draw a new reference line</small></span>
+                  <span class="chevron">›</span>
+                </button>
+                <div class="calibration-form">
+                  <label for="referenceValue" data-i18n="knownDistance">Known distance</label>
+                  <div class="input-row">
+                    <input type="number" id="referenceValue" min="0.001" step="any" value="20" />
+                    <select id="calibrationUnit" aria-label="Calibration unit">
+                      <option value="mm">mm</option><option value="cm" selected>cm</option><option value="m">m</option><option value="in">in</option><option value="ft">ft</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="scale-summary"><span data-i18n="currentScale">Current scale</span><strong id="scaleSummary">20 cm / 164 px</strong></div>
+              </div>
+
+              <div class="panel measure-panel">
+                <div class="panel-header">
+                  <div class="section-title"><span class="step-number dark">2</span><div><div class="panel-kicker" data-i18n="measure">MEASURE</div><h2 data-i18n="measureAnything">Measure anything</h2></div></div>
+                  <div class="unit-switch" role="group" aria-label="Unit system">
+                    <button type="button" class="unit-system active" data-system="metric">METRIC</button>
+                    <button type="button" class="unit-system" data-system="imperial">IMPERIAL</button>
+                  </div>
+                </div>
+                <p class="panel-description" data-i18n="measureDescription">Draw freely on the image. Your result appears here.</p>
+                <div class="result-box">
+                  <div class="result-label"><span class="measurement-live"></span><span data-i18n="currentMeasurement">CURRENT MEASUREMENT</span></div>
+                  <div class="result-value" id="resultValue">— <small id="resultUnit">cm</small></div>
+                  <div class="result-pixels" id="resultPixels">Draw a line to begin</div>
+                </div>
+                <button type="button" class="button button-dark measure-button" id="measureButton"><span>↔</span><span data-i18n="startMeasuring">Start measuring</span></button>
+                <div class="saved-header"><span data-i18n="savedMeasurements">Saved measurements</span><span class="saved-count" id="savedCount">0</span></div>
+                <div class="measurement-list" id="measurementList">
+                  <div class="list-empty" data-i18n="noMeasurements">No saved measurements yet.</div>
+                </div>
+              </div>
+            </aside>
+          </section>
+          <footer class="page-footer"><span>⌘ <span data-i18n="shortcut">Tip: hold space to pan the canvas</span></span><span><span data-i18n="localOnly">Your images stay on your device</span> · <button type="button" data-i18n="privacy">Privacy</button></span></footer>
+        </div>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
