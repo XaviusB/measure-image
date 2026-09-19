@@ -12,7 +12,7 @@ const translations = {
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
-    currentScale: "Current scale", measure: "MEASURE", measureAnything: "Measure anything",
+    currentScale: "Current scale",     measure: "MEASURE", measureAnything: "Measure anything", measurementUnit: "Measurement unit",
     measureDescription: "Draw freely on the image. Your result appears here.", currentMeasurement: "CURRENT MEASUREMENT",
     startMeasuring: "Start measuring", noMeasurements: "No saved measurements yet.",
     shortcut: "Tip: hold space to pan the canvas", localOnly: "Your images stay on your device", privacy: "Privacy"
@@ -27,7 +27,7 @@ const translations = {
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
-    currentScale: "Échelle actuelle", measure: "MESURE", measureAnything: "Mesurez librement",
+    currentScale: "Échelle actuelle",     measure: "MESURE", measureAnything: "Mesurez librement", measurementUnit: "Unité de mesure",
     measureDescription: "Tracez sur l’image. Votre résultat apparaîtra ici.", currentMeasurement: "MESURE ACTUELLE",
     startMeasuring: "Commencer à mesurer", noMeasurements: "Aucune mesure enregistrée.",
     shortcut: "Astuce : maintenez Espace pour déplacer la zone", localOnly: "Vos images restent sur votre appareil", privacy: "Confidentialité"
@@ -48,6 +48,7 @@ const state = {
   activeImageId: null,
   calibrationLine: null,
   currentLine: null,
+  lastMeasurementPixels: null,
   isPanning: false,
   pointerStart: null,
   measurements: []
@@ -116,7 +117,7 @@ function loadPersistentState() {
     state.measurements = saved.measurements || [];
     state.displayUnit = saved.displayUnit || "cm";
     state.unitSystem = saved.unitSystem || "metric";
-    $$(".unit-system").forEach((button) => button.classList.toggle("active", button.dataset.system === state.unitSystem));
+    $("#measurementUnit").value = state.displayUnit;
     if (state.images[0]) {
       state.images[0].calibrationLine = state.calibrationLine;
       state.images[0].measurements = state.measurements;
@@ -242,6 +243,17 @@ function refreshScaleText() {
   $("#resultUnit").textContent = unitLabels[state.displayUnit];
 }
 
+function updateCurrentResult() {
+  if (state.lastMeasurementPixels === null || state.lastMeasurementPixels === undefined) {
+    $("#resultValue").innerHTML = `— <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
+    return;
+  }
+  const value = convertFromCalibration(state.lastMeasurementPixels);
+  $("#resultValue").innerHTML = value === null
+    ? `— <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`
+    : `${formatValue(value, state.displayUnit).split(" ")[0]} <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
+}
+
 function renderMeasurements() {
   const list = $("#measurementList");
   $("#savedCount").textContent = state.measurements.length;
@@ -287,6 +299,7 @@ function setActiveImage(id) {
   state.pan = { x: 0, y: 0 };
   state.zoom = 1;
   state.currentLine = null;
+  state.lastMeasurementPixels = null;
   const image = activeImage();
   state.calibrationLine = image.calibrationLine || null;
   state.measurements = image.measurements || [];
@@ -355,7 +368,8 @@ function finishLine() {
   } else if (state.mode === "measure") {
     const pixels = distance(toImagePoint(state.currentLine.start), toImagePoint(state.currentLine.end));
     const value = convertFromCalibration(pixels);
-    $("#resultValue").innerHTML = value === null ? `— <small id="resultUnit">${unitLabels[state.displayUnit]}</small>` : `${formatValue(value, state.displayUnit).split(" ")[0]} <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
+    state.lastMeasurementPixels = pixels;
+    updateCurrentResult();
     $("#resultPixels").textContent = `${Math.round(pixels)} px · ${value === null ? "Calibrate to get a real-world result" : "Unsaved measurement"}`;
     if (value !== null) {
       state.measurements.unshift({ name: `Measurement ${String(state.measurements.length + 1).padStart(2, "0")}`, value, unit: state.displayUnit, pixels });
@@ -388,16 +402,11 @@ function updateLanguage(lang) {
   refreshScaleText();
 }
 
-function setUnitSystem(system) {
-  state.unitSystem = system;
-  state.displayUnit = system === "metric" ? "cm" : "in";
-  $$(".unit-system").forEach((button) => button.classList.toggle("active", button.dataset.system === system));
+function setMeasurementUnit(unit) {
+  state.displayUnit = unit;
+  state.unitSystem = ["mm", "cm", "m"].includes(unit) ? "metric" : "imperial";
   refreshScaleText();
-  if (state.currentLine) {
-    const pixels = distance(toImagePoint(state.currentLine.start), toImagePoint(state.currentLine.end));
-    const value = convertFromCalibration(pixels);
-    if (value !== null) $("#resultValue").innerHTML = `${formatValue(value, state.displayUnit).split(" ")[0]} <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
-  }
+  updateCurrentResult();
   savePersistentState();
 }
 
@@ -422,7 +431,8 @@ canvas.addEventListener("pointermove", (event) => {
       const pixels = distance(toImagePoint(state.currentLine.start), toImagePoint(state.currentLine.end));
       const value = convertFromCalibration(pixels);
       if (value !== null) {
-        $("#resultValue").innerHTML = `${formatValue(value, state.displayUnit).split(" ")[0]} <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
+        state.lastMeasurementPixels = pixels;
+        updateCurrentResult();
         $("#resultPixels").textContent = `${Math.round(pixels)} px · Live preview`;
       }
     }
@@ -477,9 +487,9 @@ $("#zoomRange").addEventListener("input", (event) => {
 $("#zoomOut").addEventListener("click", () => { state.zoom = Math.max(.25, state.zoom - .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#zoomIn").addEventListener("click", () => { state.zoom = Math.min(3, state.zoom + .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#fitButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; draw(); });
-$("#resetButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; state.currentLine = null; setMode("pan"); $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; $("#resultValue").innerHTML = `— <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`; $("#resultPixels").textContent = "Draw a line to begin"; draw(); });
+$("#resetButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; state.currentLine = null; state.lastMeasurementPixels = null; setMode("pan"); $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; updateCurrentResult(); $("#resultPixels").textContent = "Draw a line to begin"; draw(); });
 $$(".language-button").forEach((button) => button.addEventListener("click", () => updateLanguage(button.dataset.language)));
-$$(".unit-system").forEach((button) => button.addEventListener("click", () => setUnitSystem(button.dataset.system)));
+$("#measurementUnit").addEventListener("change", (event) => setMeasurementUnit(event.target.value));
 window.addEventListener("resize", resizeCanvas);
 canvasWrap.addEventListener("dragover", (event) => { event.preventDefault(); canvasWrap.classList.add("drag-over"); });
 canvasWrap.addEventListener("dragleave", () => canvasWrap.classList.remove("drag-over"));

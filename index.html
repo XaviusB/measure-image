@@ -148,10 +148,16 @@
               <div class="panel measure-panel">
                 <div class="panel-header">
                   <div class="section-title"><span class="step-number dark">2</span><div><div class="panel-kicker" data-i18n="measure">MEASURE</div><h2 data-i18n="measureAnything">Measure anything</h2></div></div>
-                  <div class="unit-switch" role="group" aria-label="Unit system">
-                    <button type="button" class="unit-system active" data-system="metric">METRIC</button>
-                    <button type="button" class="unit-system" data-system="imperial">IMPERIAL</button>
-                  </div>
+                  <label class="measurement-unit-control">
+                    <span data-i18n="measurementUnit">Measurement unit</span>
+                    <select id="measurementUnit" aria-label="Measurement unit">
+                      <option value="mm">mm</option>
+                      <option value="cm" selected>cm</option>
+                      <option value="m">m</option>
+                      <option value="in">in</option>
+                      <option value="ft">ft</option>
+                    </select>
+                  </label>
                 </div>
                 <p class="panel-description" data-i18n="measureDescription">Draw freely on the image. Your result appears here.</p>
                 <div class="result-box">

@@ -140,9 +140,9 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .scale-summary { display: flex; justify-content: space-between; align-items: center; margin: 14px 21px 18px; color: #9394a1; font-size: 10px; }
 .scale-summary strong { color: #454655; font: 500 10px "DM Mono", monospace; }
 .measure-panel .panel-header { padding-bottom: 14px; }
-.unit-switch { display: flex; background: #f3f3f7; border-radius: 5px; padding: 2px; }
-.unit-system { border: 0; border-radius: 4px; background: transparent; color: #aaaab5; font: 500 8px "DM Mono", monospace; padding: 5px 6px; }
-.unit-system.active { color: var(--purple); background: #fff; box-shadow: 0 1px 3px #dddde5; }
+.measurement-unit-control { display: flex; align-items: center; gap: 7px; color: #9a9aa8; font: 500 8px "DM Mono", monospace; letter-spacing: .5px; text-transform: uppercase; }
+.measurement-unit-control select { appearance: none; border: 1px solid #e2e0ec; border-radius: 5px; color: var(--purple); background: #faf9ff; padding: 6px 21px 6px 8px; font: 600 10px "DM Mono", monospace; cursor: pointer; }
+.measurement-unit-control select:focus { outline: 0; border-color: var(--purple); box-shadow: 0 0 0 3px #f0edff; }
 .result-box { margin: 0 21px 12px; background: #f8f8fc; border: 1px solid #efedf7; border-radius: 7px; padding: 14px; }
 .result-label { color: #9a99a9; display: flex; align-items: center; gap: 5px; font-size: 8px; }
 .measurement-live { width: 5px; height: 5px; background: var(--orange); }
