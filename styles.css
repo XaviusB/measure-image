@@ -82,6 +82,8 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .button { border: 0; border-radius: 6px; padding: 10px 15px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-weight: 600; font-size: 11px; transition: .2s; }
 .button-primary { color: #fff; background: var(--purple); box-shadow: 0 5px 12px rgba(113,84,217,.18); }
 .button-primary:hover { background: var(--purple-dark); transform: translateY(-1px); }
+.button-reset { color: #b45f68; background: #fff; border: 1px solid #efdadd; }
+.button-reset:hover { color: #973f4b; border-color: #deb8bd; background: #fff8f8; }
 .button-plus { font-size: 18px; font-weight: 400; line-height: 10px; }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(330px, .78fr); gap: 22px; align-items: start; }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 30px rgba(30,31,55,.025); }
