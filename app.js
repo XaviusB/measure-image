@@ -13,7 +13,7 @@ const translations = {
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
     currentScale: "Current scale",     measure: "MEASURE", measureAnything: "Measure anything", measurementUnit: "Measurement unit",
-    measureDescription: "Draw freely on the image. Your result appears here.", currentMeasurement: "CURRENT MEASUREMENT",
+    measureDescription: "Draw freely on the image. Your result appears here.", currentMeasurement: "CURRENT MEASUREMENT", drawLineHint: "Draw a line to begin",
     startMeasuring: "Start measuring", noMeasurements: "No saved measurements yet.",
     shortcut: "Tip: hold space to pan the canvas", localOnly: "Your images stay on your device", privacy: "Privacy"
   },
@@ -28,7 +28,7 @@ const translations = {
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
     currentScale: "Échelle actuelle",     measure: "MESURE", measureAnything: "Mesurez librement", measurementUnit: "Unité de mesure",
-    measureDescription: "Tracez sur l’image. Votre résultat apparaîtra ici.", currentMeasurement: "MESURE ACTUELLE",
+    measureDescription: "Tracez sur l’image. Votre résultat apparaîtra ici.", currentMeasurement: "MESURE ACTUELLE", drawLineHint: "Tracez une ligne pour commencer",
     startMeasuring: "Commencer à mesurer", noMeasurements: "Aucune mesure enregistrée.",
     shortcut: "Astuce : maintenez Espace pour déplacer la zone", localOnly: "Vos images restent sur votre appareil", privacy: "Confidentialité"
   }
@@ -100,6 +100,7 @@ function savePersistentState() {
   if (!image) return;
   localStorage.setItem("measurely-state", JSON.stringify({
     calibrationLine: state.calibrationLine,
+    calibrationSpace: "image",
     measurements: state.measurements,
     displayUnit: state.displayUnit,
     unitSystem: state.unitSystem,
@@ -113,7 +114,7 @@ function loadPersistentState() {
     if (!saved) return;
     state.persistent = true;
     $("#persistentMode").checked = true;
-    state.calibrationLine = saved.calibrationLine || null;
+    state.calibrationLine = saved.calibrationSpace === "image" ? saved.calibrationLine || null : null;
     state.measurements = saved.measurements || [];
     state.displayUnit = saved.displayUnit || "cm";
     state.unitSystem = saved.unitSystem || "metric";
@@ -188,6 +189,14 @@ function drawLine(line, color, width = 2, dashed = false) {
   ctx.restore();
 }
 
+function imageLineToCanvas(line) {
+  if (!line) return null;
+  return {
+    start: fromImagePoint(line.start),
+    end: fromImagePoint(line.end)
+  };
+}
+
 function draw() {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
@@ -201,7 +210,9 @@ function draw() {
   ctx.shadowOffsetY = 8;
   ctx.drawImage(image.image, transform.x, transform.y, image.width * transform.scale, image.height * transform.scale);
   ctx.restore();
-  const shownCalibration = state.currentLine && state.mode === "calibration" ? state.currentLine : state.calibrationLine;
+  const shownCalibration = state.currentLine && state.mode === "calibration"
+    ? state.currentLine
+    : imageLineToCanvas(state.calibrationLine);
   drawLine(shownCalibration, "#7154d9", 2.5, state.mode === "calibration");
   drawLine(state.currentLine && state.mode === "measure" ? state.currentLine : null, "#eb9461", 2.5, false);
 }
@@ -217,8 +228,7 @@ function distance(a, b) {
 
 function calibrationPixels() {
   if (!state.calibrationLine) return 0;
-  const image = activeImage();
-  return distance(toImagePoint(state.calibrationLine.start), toImagePoint(state.calibrationLine.end));
+  return distance(state.calibrationLine.start, state.calibrationLine.end);
 }
 
 function formatValue(value, unit = state.displayUnit) {
@@ -306,7 +316,7 @@ function setActiveImage(id) {
   $("#activeImageName").textContent = image.name;
   $("#imageDimensions").textContent = `${image.width} × ${image.height} px`;
   $("#resultValue").innerHTML = `— <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
-  $("#resultPixels").textContent = "Draw a line to begin";
+  $("#resultPixels").textContent = translations[state.lang].drawLineHint;
   $("#zoomRange").value = 100;
   $("#zoomLabel").textContent = "100%";
   renderThumbnails();
@@ -358,7 +368,10 @@ function finishLine() {
       draw();
       return;
     }
-    state.calibrationLine = state.currentLine;
+    state.calibrationLine = {
+      start: toImagePoint(state.currentLine.start),
+      end: toImagePoint(state.currentLine.end)
+    };
     activeImage().calibrationLine = state.calibrationLine;
     state.currentLine = null;
     setMode("pan");
@@ -488,7 +501,7 @@ $("#zoomRange").addEventListener("input", (event) => {
 $("#zoomOut").addEventListener("click", () => { state.zoom = Math.max(.25, state.zoom - .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#zoomIn").addEventListener("click", () => { state.zoom = Math.min(3, state.zoom + .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#fitButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; draw(); });
-$("#resetButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; state.currentLine = null; state.lastMeasurementPixels = null; setMode("pan"); $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; updateCurrentResult(); $("#resultPixels").textContent = "Draw a line to begin"; draw(); });
+$("#resetButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; state.currentLine = null; state.lastMeasurementPixels = null; setMode("pan"); $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; updateCurrentResult(); $("#resultPixels").textContent = translations[state.lang].drawLineHint; draw(); });
 $$(".language-button").forEach((button) => button.addEventListener("click", () => updateLanguage(button.dataset.language)));
 $("#measurementUnit").addEventListener("change", (event) => setMeasurementUnit(event.target.value));
 window.addEventListener("resize", resizeCanvas);
