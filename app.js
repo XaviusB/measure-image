@@ -398,6 +398,7 @@ function updateLanguage(lang) {
     if (translations[lang][key]) element.textContent = translations[lang][key];
   });
   $$(".language-button").forEach((button) => button.classList.toggle("active", button.dataset.language === lang));
+  $("#measurementUnit").setAttribute("aria-label", translations[lang].measurementUnit);
   renderMeasurements();
   refreshScaleText();
 }
