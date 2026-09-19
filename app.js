@@ -170,6 +170,11 @@ function fromImagePoint(point) {
 function drawLine(line, color, width = 2, dashed = false) {
   if (!line) return;
   ctx.save();
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const length = Math.hypot(dx, dy);
+  const normal = length ? { x: -dy / length, y: dx / length } : null;
+  const capLength = 12;
   ctx.beginPath();
   ctx.setLineDash(dashed ? [6, 5] : []);
   ctx.strokeStyle = color;
@@ -177,14 +182,15 @@ function drawLine(line, color, width = 2, dashed = false) {
   ctx.moveTo(line.start.x, line.start.y);
   ctx.lineTo(line.end.x, line.end.y);
   ctx.stroke();
-  for (const point of [line.start, line.end]) {
-    ctx.beginPath();
-    ctx.fillStyle = "#fff";
-    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
+  if (normal) {
+    for (const point of [line.start, line.end]) {
+      ctx.beginPath();
+      ctx.setLineDash([]);
+      ctx.lineWidth = width;
+      ctx.moveTo(point.x - normal.x * capLength / 2, point.y - normal.y * capLength / 2);
+      ctx.lineTo(point.x + normal.x * capLength / 2, point.y + normal.y * capLength / 2);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }
