@@ -80,6 +80,11 @@
                 <span class="toggle-track"><span></span></span>
                 <span><strong data-i18n="persistentMode">Persistent mode</strong><small data-i18n="persistentHint">Keep your work saved</small></span>
               </label>
+              <div class="project-actions">
+                <button class="button button-secondary" id="saveProjectButton" type="button"><span>↓</span><span data-i18n="saveProject">Save project</span></button>
+                <button class="button button-secondary" id="restoreProjectButton" type="button"><span>↑</span><span data-i18n="restoreProject">Restore project</span></button>
+                <input id="projectFileInput" type="file" accept="application/json,.json" hidden />
+              </div>
               <button class="button button-reset" id="clearWorkspaceButton" type="button"><span>↺</span><span data-i18n="resetWorkspace">Reset workspace</span></button>
               <button class="button button-primary" id="uploadButton" type="button"><span class="button-plus">＋</span><span data-i18n="uploadImages">Upload images</span></button>
               <input id="fileInput" type="file" accept="image/*" multiple hidden />

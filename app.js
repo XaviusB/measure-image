@@ -7,9 +7,11 @@ const translations = {
     settingsLabel: "Settings", preferences: "Preferences", tipTitle: "Quick tip",
     tipText: "Calibrate once, then measure as many times as you like.", readyToMeasure: "READY TO MEASURE",
     heroTitle: "Measure with confidence.", heroSubtitle: "Turn any image into a precise measuring surface.",
-    persistentMode: "Persistent mode", persistentHint: "Keep your work saved", resetWorkspace: "Reset workspace", uploadImages: "Upload images",
+    persistentMode: "Persistent mode", persistentHint: "Keep your work saved", saveProject: "Save project", restoreProject: "Restore project",
+    resetWorkspace: "Reset workspace", uploadImages: "Upload images",
     resetModalTitle: "Reset workspace?", resetModalDescription: "This will permanently remove all images, calibration, and measurements from this workspace.",
-    cancel: "Cancel", confirmReset: "Reset everything",
+    cancel: "Cancel", confirmReset: "Reset everything", projectSaved: "Project saved.", projectRestored: "Project restored.",
+    projectSaveFailed: "Project could not be saved.", projectInvalid: "This project file is invalid.",
     resetDone: "Workspace reset.",
     imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
@@ -25,9 +27,11 @@ const translations = {
     settingsLabel: "Réglages", preferences: "Préférences", tipTitle: "Astuce",
     tipText: "Calibrez une fois, puis mesurez autant de fois que nécessaire.", readyToMeasure: "PRÊT À MESURER",
     heroTitle: "Mesurez en toute confiance.", heroSubtitle: "Transformez chaque image en surface de mesure précise.",
-    persistentMode: "Mode persistant", persistentHint: "Conserver votre travail", resetWorkspace: "Réinitialiser l’espace", uploadImages: "Importer des images",
+    persistentMode: "Mode persistant", persistentHint: "Conserver votre travail", saveProject: "Sauvegarder le projet", restoreProject: "Restaurer le projet",
+    resetWorkspace: "Réinitialiser l’espace", uploadImages: "Importer des images",
     resetModalTitle: "Réinitialiser l’espace ?", resetModalDescription: "Toutes les images, l’étalonnage et les mesures de cet espace seront définitivement supprimés.",
-    cancel: "Annuler", confirmReset: "Tout supprimer",
+    cancel: "Annuler", confirmReset: "Tout supprimer", projectSaved: "Projet sauvegardé.", projectRestored: "Projet restauré.",
+    projectSaveFailed: "Le projet n’a pas pu être sauvegardé.", projectInvalid: "Ce fichier projet est invalide.",
     resetDone: "Espace réinitialisé.",
     imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
@@ -68,6 +72,7 @@ const canvas = $("#measureCanvas");
 const ctx = canvas.getContext("2d");
 const canvasWrap = $("#canvasWrap");
 let toastTimer;
+let persistenceVersion = 0;
 
 function demoSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
@@ -81,13 +86,14 @@ function demoSvg() {
   </svg>`;
 }
 
-function makeImage(file, url) {
+function makeImage(file, url, id = null) {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve({
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      id: id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       name: file?.name || "studio-board.svg",
       url,
+      dataUrl: url.startsWith("data:") ? url : null,
       image,
       width: image.naturalWidth,
       height: image.naturalHeight,
@@ -100,52 +106,127 @@ function makeImage(file, url) {
   });
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error || new Error("Could not read file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function urlToDataUrl(url) {
+  if (url.startsWith("data:")) return url;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Could not read image (${response.status}).`);
+  return fileToDataUrl(await response.blob());
+}
+
 function activeImage() {
   return state.images.find((item) => item.id === state.activeImageId);
 }
 
-function savePersistentState() {
+function normalizedMeasurements(measurements) {
+  return (Array.isArray(measurements) ? measurements : []).map((measurement) => ({
+    ...measurement,
+    color: measurement.color || randomMeasurementColor()
+  }));
+}
+
+async function serializeImage(image) {
+  return {
+    id: image.id,
+    name: image.name,
+    width: image.width,
+    height: image.height,
+    dataUrl: image.dataUrl || await urlToDataUrl(image.url),
+    calibrationLine: image.calibrationLine || null,
+    measurements: image.measurements || []
+  };
+}
+
+async function buildProjectData() {
+  const image = activeImage();
+  if (image) {
+    image.calibrationLine = state.calibrationLine;
+    image.measurements = state.measurements;
+  }
+  return {
+    format: "measurely-project",
+    version: 1,
+    lang: state.lang,
+    persistent: true,
+    activeImageId: state.activeImageId,
+    displayUnit: state.displayUnit,
+    unitSystem: state.unitSystem,
+    referenceValue: Number($("#referenceValue").value) || 20,
+    calibrationUnit: $("#calibrationUnit").value,
+    images: await Promise.all(state.images.map(serializeImage))
+  };
+}
+
+async function savePersistentState() {
   if (!state.persistent) return;
   const image = activeImage();
   if (!image) return;
   image.calibrationLine = state.calibrationLine;
   image.measurements = state.measurements;
-  localStorage.setItem("measurely-state", JSON.stringify({
-    persistent: true,
-    calibrationLine: state.calibrationLine,
-    calibrationSpace: "image",
-    measurements: state.measurements,
-    displayUnit: state.displayUnit,
-    unitSystem: state.unitSystem,
-    imageId: image.id
-  }));
+  const requestVersion = ++persistenceVersion;
+  try {
+    const project = await buildProjectData();
+    if (requestVersion !== persistenceVersion || !state.persistent) return;
+    localStorage.setItem("measurely-state", JSON.stringify(project));
+  } catch {
+    if (requestVersion === persistenceVersion) showToast("Workspace could not be saved. The images may be too large.");
+  }
 }
 
 function randomMeasurementColor() {
   return measurementColors[Math.floor(Math.random() * measurementColors.length)];
 }
 
-function loadPersistentState() {
+async function loadPersistentState() {
   try {
     const saved = JSON.parse(localStorage.getItem("measurely-state"));
-    if (!saved) return;
+    if (!saved) return false;
     state.persistent = true;
     $("#persistentMode").checked = true;
-    state.calibrationLine = saved.calibrationSpace === "image" ? saved.calibrationLine || null : null;
-    state.measurements = (saved.measurements || []).map((measurement) => ({
-      ...measurement,
-      color: measurement.color || randomMeasurementColor()
-    }));
     state.displayUnit = saved.displayUnit || "cm";
     state.unitSystem = saved.unitSystem || "metric";
     $("#measurementUnit").value = state.displayUnit;
-    if (state.images[0]) {
-      state.images[0].calibrationLine = state.calibrationLine;
-      state.images[0].measurements = state.measurements;
+    $("#referenceValue").value = saved.referenceValue || 20;
+    $("#calibrationUnit").value = saved.calibrationUnit || "cm";
+    if (Array.isArray(saved.images) && saved.images.length) {
+      state.images = await Promise.all(saved.images.map(async (savedImage) => {
+        if (typeof savedImage.dataUrl !== "string" || !savedImage.dataUrl.startsWith("data:image/")) {
+          throw new Error("Saved image data is invalid.");
+        }
+        const image = await makeImage(null, savedImage.dataUrl, savedImage.id);
+        image.name = savedImage.name || "Saved image";
+        image.calibrationLine = savedImage.calibrationLine || null;
+        image.measurements = normalizedMeasurements(savedImage.measurements);
+        return image;
+      }));
+      state.activeImageId = state.images.some((image) => image.id === saved.activeImageId)
+        ? saved.activeImageId
+        : state.images[0].id;
+      const image = activeImage();
+      state.calibrationLine = image.calibrationLine;
+      state.measurements = image.measurements;
+    } else {
+      state.calibrationLine = saved.calibrationSpace === "image" ? saved.calibrationLine || null : null;
+      state.measurements = normalizedMeasurements(saved.measurements);
+      if (state.images[0]) {
+        state.images[0].calibrationLine = state.calibrationLine;
+        state.images[0].measurements = state.measurements;
+      }
     }
-    $("#calibrationUnit").value = state.calibrationLine?.unit || "cm";
+    return true;
   } catch {
+    state.persistent = false;
+    $("#persistentMode").checked = false;
     showToast("Saved data could not be loaded.");
+    return false;
   }
 }
 
@@ -496,6 +577,7 @@ function setActiveImage(id) {
 }
 
 function resetWorkspace() {
+  persistenceVersion += 1;
   state.images.forEach((image) => {
     if (image.url.startsWith("blob:")) URL.revokeObjectURL(image.url);
   });
@@ -547,7 +629,7 @@ async function addFiles(files) {
   if (!validFiles.length) return showToast("Please choose an image file.");
   for (const file of validFiles) {
     try {
-      const image = await makeImage(file, URL.createObjectURL(file));
+      const image = await makeImage(file, await fileToDataUrl(file));
       state.images.push(image);
     } catch {
       showToast(`Could not open ${file.name}.`);
@@ -556,10 +638,74 @@ async function addFiles(files) {
   $("#canvasEmpty").hidden = state.images.length > 0;
   if (!state.activeImageId && state.images.length) setActiveImage(state.images[0].id);
   else renderThumbnails();
+  savePersistentState();
   showToast(`${validFiles.length} image${validFiles.length > 1 ? "s" : ""} added.`);
 }
 
 function openFilePicker() { $("#fileInput").click(); }
+function openProjectPicker() { $("#projectFileInput").click(); }
+
+async function saveProject() {
+  try {
+    const project = await buildProjectData();
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `measurely-project-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    showToast(translations[state.lang].projectSaved);
+  } catch {
+    showToast(translations[state.lang].projectSaveFailed);
+  }
+}
+
+async function restoreProject(file) {
+  try {
+    const project = JSON.parse(await file.text());
+    if (project?.format !== "measurely-project" || !Array.isArray(project.images) || !project.images.length) {
+      throw new Error("Invalid project format.");
+    }
+    const images = await Promise.all(project.images.map(async (savedImage) => {
+      if (typeof savedImage.dataUrl !== "string" || !savedImage.dataUrl.startsWith("data:image/")) {
+        throw new Error("Invalid project image.");
+      }
+      const image = await makeImage(null, savedImage.dataUrl, savedImage.id);
+      image.name = savedImage.name || "Restored image";
+      image.calibrationLine = savedImage.calibrationLine || null;
+      image.measurements = normalizedMeasurements(savedImage.measurements);
+      return image;
+    }));
+    state.images.forEach((image) => {
+      if (image.url.startsWith("blob:")) URL.revokeObjectURL(image.url);
+    });
+    state.images = images;
+    state.activeImageId = images.some((image) => image.id === project.activeImageId)
+      ? project.activeImageId
+      : images[0].id;
+    state.persistent = true;
+    state.mode = "pan";
+    state.pan = { x: 0, y: 0 };
+    state.zoom = 1;
+    state.currentLine = null;
+    state.calibrationEdit = null;
+    state.measurementEdit = null;
+    state.lastMeasurementPixels = null;
+    state.displayUnit = project.displayUnit || "cm";
+    state.unitSystem = project.unitSystem || "metric";
+    $("#persistentMode").checked = true;
+    $("#measurementUnit").value = state.displayUnit;
+    $("#referenceValue").value = project.referenceValue || 20;
+    $("#calibrationUnit").value = project.calibrationUnit || "cm";
+    setActiveImage(state.activeImageId);
+    updateLanguage(project.lang === "fr" ? "fr" : "en");
+    await savePersistentState();
+    showToast(translations[state.lang].projectRestored);
+  } catch {
+    showToast(translations[state.lang].projectInvalid);
+  }
+}
 
 function setMode(mode) {
   state.mode = mode;
@@ -810,6 +956,13 @@ $("#uploadButton").addEventListener("click", openFilePicker);
 $("#emptyUploadButton").addEventListener("click", openFilePicker);
 $("#openUploadNav").addEventListener("click", openFilePicker);
 $("#fileInput").addEventListener("change", (event) => addFiles(event.target.files));
+$("#saveProjectButton").addEventListener("click", saveProject);
+$("#restoreProjectButton").addEventListener("click", openProjectPicker);
+$("#projectFileInput").addEventListener("change", async (event) => {
+  const [file] = event.target.files;
+  if (file) await restoreProject(file);
+  event.target.value = "";
+});
 $("#calibrationButton").addEventListener("click", () => setMode("calibration"));
 $("#measureButton").addEventListener("click", () => setMode("measure"));
 $("#referenceValue").addEventListener("input", () => { refreshScaleText(); savePersistentState(); });
@@ -868,8 +1021,8 @@ document.addEventListener("keydown", (event) => {
   const demo = await makeImage(null, demoUrl);
   state.images = [demo];
   state.activeImageId = demo.id;
-  loadPersistentState();
-  if (state.persistent && state.images.length) state.activeImageId = state.images[0].id;
+  const restored = await loadPersistentState();
+  if (!restored) state.activeImageId = demo.id;
   setActiveImage(state.activeImageId);
   renderMeasurements();
   updateLanguage("en");

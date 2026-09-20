@@ -70,6 +70,7 @@ button { cursor: pointer; }
 h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; letter-spacing: -1.7px; }
 .page-heading p { color: #8b8c9b; font-size: 13px; margin: 10px 0 0; }
 .heading-actions { display: flex; align-items: center; gap: 26px; }
+.project-actions { display: flex; align-items: center; gap: 7px; }
 .persistent-toggle { display: flex; gap: 9px; align-items: center; cursor: pointer; }
 .persistent-toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .toggle-track { width: 29px; height: 17px; border-radius: 20px; background: #d9d8e0; padding: 2px; transition: .2s; }
@@ -191,7 +192,8 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
   .topbar { padding: 0 18px; height: 57px; }
   .content-wrap { padding: 26px 16px 16px; }
   .page-heading { display: block; }
-  .heading-actions { margin-top: 20px; justify-content: space-between; }
+  .heading-actions { margin-top: 20px; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .project-actions { order: 3; width: 100%; }
   .persistent-toggle { flex: 1; }
   .workspace-grid, .inspector { display: flex; }
   .canvas-wrap { height: 64vw; min-height: 280px; }
