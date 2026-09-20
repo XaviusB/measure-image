@@ -22,5 +22,7 @@ Hold **Shift** while drawing or editing a line to constrain it to 0° (horizonta
 
 Rotate the active image with the left/right quarter-turn buttons or use the rotation slider for any angle. The rotation is kept with the image in persistent mode and in project files.
 
+Use the lock buttons above the canvas to prevent accidental image movement or calibration edits. Both lock states are kept per image and included in persistent storage and project files.
+
 Use the trash icon above the canvas to remove the active image. The next image is selected automatically, or the empty workspace is shown when no image remains.
 # measure-image

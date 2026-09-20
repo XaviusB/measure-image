@@ -86,6 +86,7 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .canvas-actions { display: flex; gap: 4px; }
 .icon-button { width: 27px; height: 27px; background: #fff; border: 1px solid #ecebf2; color: #9798a7; border-radius: 5px; font-size: 15px; }
 .icon-button:hover { border-color: #cfc9f5; color: var(--purple); background: #faf9ff; }
+.icon-button.is-locked { color: var(--purple); border-color: #cfc9f5; background: #faf9ff; }
 .icon-button-danger:hover { border-color: #efdadd; color: #b45f68; background: #fff8f8; }
 .icon-button:disabled { cursor: not-allowed; opacity: .45; }
 .canvas-wrap { margin: 0 14px; height: min(47vw, 530px); min-height: 335px; position: relative; background: var(--canvas); border-radius: 7px; overflow: hidden; }
@@ -125,6 +126,7 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .panel-description { color: #91929f; font-size: 11px; line-height: 1.5; margin: -1px 21px 16px 56px; }
 .calibration-action { width: calc(100% - 42px); margin: 0 21px 18px; padding: 11px 10px; border: 1px solid #e4e0fb; background: #faf9ff; border-radius: 6px; color: var(--ink); display: flex; align-items: center; gap: 10px; text-align: left; }
 .calibration-action:hover { border-color: #bcb1f4; }
+.calibration-action:disabled { cursor: not-allowed; opacity: .5; }
 .ruler-icon { color: var(--purple); font-size: 20px; }
 .calibration-action strong, .calibration-action small { display: block; }
 .calibration-action strong { font-size: 10px; font-weight: 700; }
@@ -137,6 +139,7 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .input-row input { flex: 1; min-width: 0; }
 .input-row select { width: 72px; }
 .input-row input:focus, .input-row select:focus { border-color: var(--purple); box-shadow: 0 0 0 3px #f0edff; }
+.input-row input:disabled, .input-row select:disabled { cursor: not-allowed; color: #aaaab5; background: #f7f7fa; }
 .scale-summary { display: flex; justify-content: space-between; align-items: center; margin: 14px 21px 18px; color: #9394a1; font-size: 10px; }
 .scale-summary strong { color: #454655; font: 500 10px "DM Mono", monospace; }
 .measure-panel .panel-header { padding-bottom: 14px; }

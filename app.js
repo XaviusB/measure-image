@@ -12,7 +12,8 @@ const translations = {
       "Use the rotation controls to turn the image without losing your measurements.",
       "Enable Persistent mode to keep images, calibration, and measurements in this browser.",
       "Drag a line endpoint to edit it, or drag its middle to move the whole line.",
-      "Your images stay on your device; export a project to back it up."
+      "Your images stay on your device; export a project to back it up.",
+      "Use lock buttons to secure your images and calibration."
     ],
     readyToMeasure: "READY TO MEASURE",
     heroTitle: "Measure with confidence.", heroSubtitle: "Turn any image into a precise measuring surface.",
@@ -22,7 +23,7 @@ const translations = {
     cancel: "Cancel", confirmReset: "Reset everything", projectSaved: "Project saved.", projectRestored: "Project restored.",
     projectSaveFailed: "Project could not be saved.", projectInvalid: "This project file is invalid.",
     resetDone: "Workspace reset.",
-    imageCanvas: "IMAGE CANVAS", rotation: "Rotation", rotateLeft: "Rotate left", rotateRight: "Rotate right", deleteImage: "Delete image", imageDeleted: "Image deleted.", dropImage: "Drop an image here", noImageSelected: "No image selected",
+    imageCanvas: "IMAGE CANVAS", rotation: "Rotation", rotateLeft: "Rotate left", rotateRight: "Rotate right", lockImage: "Lock image", unlockImage: "Unlock image", lockCalibration: "Lock calibration", unlockCalibration: "Unlock calibration", deleteImage: "Delete image", imageDeleted: "Image deleted.", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
@@ -51,7 +52,7 @@ const translations = {
     cancel: "Annuler", confirmReset: "Tout supprimer", projectSaved: "Projet sauvegardé.", projectRestored: "Projet restauré.",
     projectSaveFailed: "Le projet n’a pas pu être sauvegardé.", projectInvalid: "Ce fichier projet est invalide.",
     resetDone: "Espace réinitialisé.",
-    imageCanvas: "ZONE IMAGE", rotation: "Rotation", rotateLeft: "Tourner vers la gauche", rotateRight: "Tourner vers la droite", deleteImage: "Supprimer l’image", imageDeleted: "Image supprimée.", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
+    imageCanvas: "ZONE IMAGE", rotation: "Rotation", rotateLeft: "Tourner vers la gauche", rotateRight: "Tourner vers la droite", lockImage: "Verrouiller l’image", unlockImage: "Déverrouiller l’image", lockCalibration: "Verrouiller l’étalonnage", unlockCalibration: "Déverrouiller l’étalonnage", deleteImage: "Supprimer l’image", imageDeleted: "Image supprimée.", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
@@ -118,6 +119,8 @@ function makeImage(file, url, id = null) {
       height: image.naturalHeight,
       fitScale: 1,
       rotation: 0,
+      imageLocked: false,
+      calibrationLocked: false,
       calibrationLine: null,
       measurements: []
     });
@@ -161,6 +164,8 @@ async function serializeImage(image) {
     height: image.height,
     dataUrl: image.dataUrl || await urlToDataUrl(image.url),
     rotation: image.rotation || 0,
+    imageLocked: image.imageLocked === true,
+    calibrationLocked: image.calibrationLocked === true,
     calibrationLine: image.calibrationLine || null,
     measurements: image.measurements || []
   };
@@ -227,6 +232,8 @@ async function loadPersistentState() {
         image.name = savedImage.name || "Saved image";
         image.rotation = Number(savedImage.rotation) || 0;
         image.calibrationLine = savedImage.calibrationLine || null;
+        image.imageLocked = savedImage.imageLocked === true;
+        image.calibrationLocked = savedImage.calibrationLocked === true && Boolean(image.calibrationLine);
         image.measurements = normalizedMeasurements(savedImage.measurements);
         return image;
       }));
@@ -449,7 +456,7 @@ function pointToSegmentDistance(point, start, end) {
 }
 
 function calibrationHit(point) {
-  if (!state.calibrationLine) return null;
+  if (!state.calibrationLine || activeImage()?.calibrationLocked) return null;
   const line = imageLineToCanvas(state.calibrationLine);
   if (distance(point, line.start) <= 14) return "start";
   if (distance(point, line.end) <= 14) return "end";
@@ -515,7 +522,9 @@ function updateCanvasCursor(point) {
     ? calibrationResizeCursor()
     : calibration === "line"
       ? "move"
-      : "grab";
+      : activeImage()?.imageLocked
+        ? "default"
+        : "grab";
 }
 
 function calibrationPixels() {
@@ -658,7 +667,24 @@ function setActiveImage(id) {
 }
 
 function updateImageActions() {
-  $("#deleteImageButton").disabled = !activeImage();
+  const image = activeImage();
+  const hasCalibration = Boolean(image?.calibrationLine);
+  $("#deleteImageButton").disabled = !image;
+  $("#toggleImageLock").disabled = !image;
+  $("#toggleCalibrationLock").disabled = !image || !hasCalibration;
+  $("#calibrationButton").disabled = !image || image.calibrationLocked;
+  $("#referenceValue").disabled = !image || image.calibrationLocked;
+  $("#calibrationUnit").disabled = !image || image.calibrationLocked;
+  $("#toggleImageLock").textContent = image?.imageLocked ? "🔒" : "🔓";
+  $("#toggleCalibrationLock").textContent = image?.calibrationLocked ? "🔒" : "🔓";
+  $("#toggleImageLock").classList.toggle("is-locked", Boolean(image?.imageLocked));
+  $("#toggleCalibrationLock").classList.toggle("is-locked", Boolean(image?.calibrationLocked));
+  $("#toggleImageLock").setAttribute("aria-pressed", String(Boolean(image?.imageLocked)));
+  $("#toggleCalibrationLock").setAttribute("aria-pressed", String(Boolean(image?.calibrationLocked)));
+  $("#toggleImageLock").setAttribute("aria-label", translations[state.lang][image?.imageLocked ? "unlockImage" : "lockImage"]);
+  $("#toggleCalibrationLock").setAttribute("aria-label", translations[state.lang][image?.calibrationLocked ? "unlockCalibration" : "lockCalibration"]);
+  $("#toggleImageLock").title = translations[state.lang][image?.imageLocked ? "unlockImage" : "lockImage"];
+  $("#toggleCalibrationLock").title = translations[state.lang][image?.calibrationLocked ? "unlockCalibration" : "lockCalibration"];
 }
 
 function removeActiveImage() {
@@ -797,6 +823,8 @@ async function restoreProject(file) {
       image.name = savedImage.name || "Restored image";
       image.rotation = Number(savedImage.rotation) || 0;
       image.calibrationLine = savedImage.calibrationLine || null;
+      image.imageLocked = savedImage.imageLocked === true;
+      image.calibrationLocked = savedImage.calibrationLocked === true && Boolean(image.calibrationLine);
       image.measurements = normalizedMeasurements(savedImage.measurements);
       return image;
     }));
@@ -835,6 +863,11 @@ function setMode(mode) {
   state.currentLine = null;
   state.calibrationEdit = null;
   state.measurementEdit = null;
+  if (mode === "calibration" && activeImage()?.calibrationLocked) {
+    state.mode = "pan";
+    updateCanvasCursor();
+    return;
+  }
   if (mode === "measure") state.measurementDraftColor = randomMeasurementColor();
   updateCanvasCursor();
   draw();
@@ -864,6 +897,7 @@ function finishLine() {
     state.currentLine = null;
     setMode("pan");
     refreshScaleText();
+    updateImageActions();
     savePersistentState();
     showToast("Calibration updated.");
   } else if (state.mode === "measure") {
@@ -930,6 +964,7 @@ function updateLanguage(lang) {
   $$(".language-button").forEach((button) => button.classList.toggle("active", button.dataset.language === lang));
   renderQuickTip();
   $("#measurementUnit").setAttribute("aria-label", translations[lang].measurementUnit);
+  updateImageActions();
   if (!activeImage()) $("#activeImageName").textContent = translations[lang].noImageSelected;
   renderMeasurements();
   refreshScaleText();
@@ -974,8 +1009,10 @@ canvas.addEventListener("pointerdown", (event) => {
     }
   }
   if (state.mode === "calibration" || state.mode === "measure") {
-    state.currentLine = { start: point, end: point };
-  } else {
+    if (state.mode !== "calibration" || !activeImage().calibrationLocked) {
+      state.currentLine = { start: point, end: point };
+    }
+  } else if (!activeImage().imageLocked) {
     state.isPanning = true;
     updateCanvasCursor(point);
   }
@@ -1111,8 +1148,34 @@ $("#projectFileInput").addEventListener("change", async (event) => {
 $("#calibrationButton").addEventListener("click", () => setMode("calibration"));
 $("#measureButton").addEventListener("click", () => setMode("measure"));
 $("#deleteImageButton").addEventListener("click", removeActiveImage);
-$("#referenceValue").addEventListener("input", () => { refreshScaleText(); savePersistentState(); });
-$("#calibrationUnit").addEventListener("change", () => { refreshScaleText(); savePersistentState(); });
+$("#toggleImageLock").addEventListener("click", () => {
+  const image = activeImage();
+  if (!image) return;
+  image.imageLocked = !image.imageLocked;
+  updateImageActions();
+  updateCanvasCursor();
+  savePersistentState();
+});
+$("#toggleCalibrationLock").addEventListener("click", () => {
+  const image = activeImage();
+  if (!image?.calibrationLine) return;
+  image.calibrationLocked = !image.calibrationLocked;
+  state.calibrationEdit = null;
+  setMode("pan");
+  updateImageActions();
+  updateCanvasCursor();
+  savePersistentState();
+});
+$("#referenceValue").addEventListener("input", () => {
+  if (activeImage()?.calibrationLocked) return;
+  refreshScaleText();
+  savePersistentState();
+});
+$("#calibrationUnit").addEventListener("change", () => {
+  if (activeImage()?.calibrationLocked) return;
+  refreshScaleText();
+  savePersistentState();
+});
 $("#persistentMode").addEventListener("change", (event) => {
   state.persistent = event.target.checked;
   if (state.persistent) {
