@@ -17,4 +17,6 @@ Enable **Persistent mode** to keep the complete workspace in the browser: import
 Use **Save project** to download a portable JSON project file containing the images and all measurement data. **Restore project** imports that file and replaces the current workspace.
 
 Very large images may exceed the browser's local storage limit; use **Save project** as an external backup in that case.
+
+Hold **Shift** while drawing or editing a line to constrain it to 0° (horizontal) or 90° (vertical).
 # measure-image

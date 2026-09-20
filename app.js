@@ -13,7 +13,7 @@ const translations = {
     cancel: "Cancel", confirmReset: "Reset everything", projectSaved: "Project saved.", projectRestored: "Project restored.",
     projectSaveFailed: "Project could not be saved.", projectInvalid: "This project file is invalid.",
     resetDone: "Workspace reset.",
-    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom", dropImage: "Drop an image here", noImageSelected: "No image selected",
+    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom · Hold Shift for straight lines", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
@@ -33,7 +33,7 @@ const translations = {
     cancel: "Annuler", confirmReset: "Tout supprimer", projectSaved: "Projet sauvegardé.", projectRestored: "Projet restauré.",
     projectSaveFailed: "Le projet n’a pas pu être sauvegardé.", projectInvalid: "Ce fichier projet est invalide.",
     resetDone: "Espace réinitialisé.",
-    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
+    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer · Maintenez Shift pour une ligne droite", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
@@ -364,6 +364,15 @@ function draw() {
 function pointerPosition(event) {
   const rect = canvas.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+function orthogonalPoint(start, candidate, snap) {
+  if (!snap) return candidate;
+  const deltaX = candidate.x - start.x;
+  const deltaY = candidate.y - start.y;
+  return Math.abs(deltaX) >= Math.abs(deltaY)
+    ? { x: candidate.x, y: start.y }
+    : { x: start.x, y: candidate.y };
 }
 
 function distance(a, b) {
@@ -841,12 +850,12 @@ canvas.addEventListener("pointerdown", (event) => {
 canvas.addEventListener("pointermove", (event) => {
   const point = pointerPosition(event);
   if (state.calibrationEdit) {
-    const currentImagePoint = toImagePoint(point);
     const edit = state.calibrationEdit;
+    const currentImagePoint = toImagePoint(point);
     if (edit.type === "start") {
-      state.calibrationLine.start = currentImagePoint;
+      state.calibrationLine.start = orthogonalPoint(state.calibrationLine.end, currentImagePoint, event.shiftKey);
     } else if (edit.type === "end") {
-      state.calibrationLine.end = currentImagePoint;
+      state.calibrationLine.end = orthogonalPoint(state.calibrationLine.start, currentImagePoint, event.shiftKey);
     } else {
       const delta = {
         x: currentImagePoint.x - edit.start.x,
@@ -862,13 +871,13 @@ canvas.addEventListener("pointermove", (event) => {
     updateCanvasCursor(point);
     draw();
   } else if (state.measurementEdit) {
-    const currentImagePoint = toImagePoint(point);
     const edit = state.measurementEdit;
     const measurement = edit.measurement;
+    const currentImagePoint = toImagePoint(point);
     if (edit.type === "start") {
-      measurement.line.start = currentImagePoint;
+      measurement.line.start = orthogonalPoint(measurement.line.end, currentImagePoint, event.shiftKey);
     } else if (edit.type === "end") {
-      measurement.line.end = currentImagePoint;
+      measurement.line.end = orthogonalPoint(measurement.line.start, currentImagePoint, event.shiftKey);
     } else {
       const delta = {
         x: currentImagePoint.x - edit.start.x,
@@ -893,7 +902,7 @@ canvas.addEventListener("pointermove", (event) => {
     updateCanvasCursor(point);
     draw();
   } else if (state.currentLine) {
-    state.currentLine.end = point;
+    state.currentLine.end = orthogonalPoint(state.currentLine.start, point, event.shiftKey);
     if (state.mode === "measure" && state.calibrationLine) {
       const pixels = distance(toImagePoint(state.currentLine.start), toImagePoint(state.currentLine.end));
       const value = convertFromCalibration(pixels);
@@ -926,6 +935,8 @@ canvas.addEventListener("pointerup", (event) => {
     refreshScaleText();
     savePersistentState();
   } else if (state.currentLine) {
+    const point = pointerPosition(event);
+    state.currentLine.end = orthogonalPoint(state.currentLine.start, point, event.shiftKey);
     finishLine();
   }
   state.isPanning = false;
