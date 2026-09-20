@@ -108,7 +108,10 @@ function savePersistentState() {
   if (!state.persistent) return;
   const image = activeImage();
   if (!image) return;
+  image.calibrationLine = state.calibrationLine;
+  image.measurements = state.measurements;
   localStorage.setItem("measurely-state", JSON.stringify({
+    persistent: true,
     calibrationLine: state.calibrationLine,
     calibrationSpace: "image",
     measurements: state.measurements,
@@ -212,6 +215,33 @@ function drawLine(line, color, width = 2, dashed = false) {
   ctx.restore();
 }
 
+function drawMeasurementLabel(line, color, text) {
+  if (!line || text === "—") return;
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const length = Math.hypot(dx, dy);
+  if (!length) return;
+  const normal = { x: -dy / length, y: dx / length };
+  const midpoint = {
+    x: (line.start.x + line.end.x) / 2 + normal.x * 13,
+    y: (line.start.y + line.end.y) / 2 + normal.y * 13
+  };
+  ctx.save();
+  ctx.font = '600 10px "DM Mono", monospace';
+  const paddingX = 6;
+  const height = 18;
+  const width = ctx.measureText(text).width + paddingX * 2;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(midpoint.x - width / 2, midpoint.y - height / 2, width, height, 4);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, midpoint.x, midpoint.y + .5);
+  ctx.restore();
+}
+
 function imageLineToCanvas(line) {
   if (!line) return null;
   return {
@@ -239,7 +269,12 @@ function draw() {
   drawLine(shownCalibration, "#7154d9", 2.5, state.mode === "calibration");
   if (state.persistent) {
     state.measurements.forEach((measurement) => {
-      if (measurement.line) drawLine(imageLineToCanvas(measurement.line), measurement.color || "#eb9461", 2.5, false);
+      if (measurement.line) {
+        const color = measurement.color || "#eb9461";
+        const canvasLine = imageLineToCanvas(measurement.line);
+        drawLine(canvasLine, color, 2.5, false);
+        drawMeasurementLabel(canvasLine, color, formatValue(measurement.value, measurement.unit || state.displayUnit));
+      }
     });
   }
   drawLine(state.currentLine && state.mode === "measure" ? state.currentLine : null, state.measurementDraftColor || "#eb9461", 2.5, false);
@@ -399,6 +434,7 @@ function updateCurrentResult() {
 function renderMeasurements() {
   const list = $("#measurementList");
   $("#savedCount").textContent = state.measurements.length;
+  $("#savedMeasurementCount").textContent = state.measurements.length;
   if (!state.measurements.length) {
     list.innerHTML = `<div class="list-empty" data-i18n="noMeasurements">${translations[state.lang].noMeasurements}</div>`;
     return;
@@ -788,6 +824,9 @@ $("#persistentMode").addEventListener("change", (event) => {
     showToast("Persistent mode is off.");
   }
   draw();
+});
+$("#savedNav").addEventListener("click", () => {
+  $("#measurementList").scrollIntoView({ behavior: "smooth", block: "center" });
 });
 $("#clearWorkspaceButton").addEventListener("click", openResetModal);
 $("#cancelResetButton").addEventListener("click", closeResetModal);
