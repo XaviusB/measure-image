@@ -51,7 +51,6 @@ button { cursor: pointer; }
 .language-switch { display: flex; border: 1px solid #e8e7ee; padding: 3px; border-radius: 6px; gap: 1px; }
 .language-button { color: #aaa9b7; background: transparent; border: 0; border-radius: 4px; padding: 4px 7px; font: 600 9px "DM Mono", monospace; }
 .language-button.active { color: var(--purple); background: var(--purple-pale); }
-.help-button { border: 1px solid #e3e2ea; color: #8f90a0; border-radius: 50%; width: 22px; height: 22px; line-height: 18px; background: #fff; font-size: 12px; }
 .content-wrap { max-width: 1320px; padding: 38px 46px 18px; margin: auto; }
 .page-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px; }
 .eyebrow, .panel-kicker, .result-label { color: var(--purple); font: 500 9px "DM Mono", monospace; letter-spacing: 1.1px; }
