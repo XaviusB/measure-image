@@ -13,7 +13,7 @@ const translations = {
     cancel: "Cancel", confirmReset: "Reset everything", projectSaved: "Project saved.", projectRestored: "Project restored.",
     projectSaveFailed: "Project could not be saved.", projectInvalid: "This project file is invalid.",
     resetDone: "Workspace reset.",
-    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom · Hold Shift for straight lines", rotation: "Rotation", rotateLeft: "Rotate left", rotateRight: "Rotate right", dropImage: "Drop an image here", noImageSelected: "No image selected",
+    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom · Hold Shift for straight lines", rotation: "Rotation", rotateLeft: "Rotate left", rotateRight: "Rotate right", deleteImage: "Delete image", imageDeleted: "Image deleted.", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
@@ -33,7 +33,7 @@ const translations = {
     cancel: "Annuler", confirmReset: "Tout supprimer", projectSaved: "Projet sauvegardé.", projectRestored: "Projet restauré.",
     projectSaveFailed: "Le projet n’a pas pu être sauvegardé.", projectInvalid: "Ce fichier projet est invalide.",
     resetDone: "Espace réinitialisé.",
-    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer · Maintenez Shift pour une ligne droite", rotation: "Rotation", rotateLeft: "Tourner vers la gauche", rotateRight: "Tourner vers la droite", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
+    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer · Maintenez Shift pour une ligne droite", rotation: "Rotation", rotateLeft: "Tourner vers la gauche", rotateRight: "Tourner vers la droite", deleteImage: "Supprimer l’image", imageDeleted: "Image supprimée.", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
@@ -170,9 +170,10 @@ async function buildProjectData() {
 async function savePersistentState() {
   if (!state.persistent) return;
   const image = activeImage();
-  if (!image) return;
-  image.calibrationLine = state.calibrationLine;
-  image.measurements = state.measurements;
+  if (image) {
+    image.calibrationLine = state.calibrationLine;
+    image.measurements = state.measurements;
+  }
   const requestVersion = ++persistenceVersion;
   try {
     const project = await buildProjectData();
@@ -198,7 +199,7 @@ async function loadPersistentState() {
     $("#measurementUnit").value = state.displayUnit;
     $("#referenceValue").value = saved.referenceValue || 20;
     $("#calibrationUnit").value = saved.calibrationUnit || "cm";
-    if (Array.isArray(saved.images) && saved.images.length) {
+    if (Array.isArray(saved.images)) {
       state.images = await Promise.all(saved.images.map(async (savedImage) => {
         if (typeof savedImage.dataUrl !== "string" || !savedImage.dataUrl.startsWith("data:image/")) {
           throw new Error("Saved image data is invalid.");
@@ -210,6 +211,12 @@ async function loadPersistentState() {
         image.measurements = normalizedMeasurements(savedImage.measurements);
         return image;
       }));
+      if (!state.images.length) {
+        state.activeImageId = null;
+        state.calibrationLine = null;
+        state.measurements = [];
+        return true;
+      }
       state.activeImageId = state.images.some((image) => image.id === saved.activeImageId)
         ? saved.activeImageId
         : state.images[0].id;
@@ -594,8 +601,28 @@ function setActiveImage(id) {
   state.currentLine = null;
   state.lastMeasurementPixels = null;
   const image = activeImage();
+  if (!image) {
+    state.calibrationLine = null;
+    state.measurements = [];
+    $("#activeImageName").textContent = translations[state.lang].noImageSelected;
+    $("#imageDimensions").textContent = "—";
+    $("#resultValue").innerHTML = `— <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
+    $("#resultPixels").textContent = translations[state.lang].drawLineHint;
+    $("#zoomRange").value = 100;
+    $("#zoomLabel").textContent = "100%";
+    $("#canvasEmpty").hidden = false;
+    updateRotationControls();
+    updateImageActions();
+    renderThumbnails();
+    renderMeasurements();
+    resizeCanvas();
+    refreshScaleText();
+    draw();
+    return;
+  }
   state.calibrationLine = image.calibrationLine || null;
   state.measurements = image.measurements || [];
+  $("#canvasEmpty").hidden = true;
   $("#activeImageName").textContent = image.name;
   $("#imageDimensions").textContent = `${image.width} × ${image.height} px`;
   $("#resultValue").innerHTML = `— <small id="resultUnit">${unitLabels[state.displayUnit]}</small>`;
@@ -603,11 +630,31 @@ function setActiveImage(id) {
   $("#zoomRange").value = 100;
   $("#zoomLabel").textContent = "100%";
   updateRotationControls();
+  updateImageActions();
   renderThumbnails();
   renderMeasurements();
   resizeCanvas();
   refreshScaleText();
   draw();
+}
+
+function updateImageActions() {
+  $("#deleteImageButton").disabled = !activeImage();
+}
+
+function removeActiveImage() {
+  const image = activeImage();
+  if (!image) return;
+  image.calibrationLine = state.calibrationLine;
+  image.measurements = state.measurements;
+  if (image.url.startsWith("blob:")) URL.revokeObjectURL(image.url);
+  const removedIndex = state.images.findIndex((item) => item.id === image.id);
+  state.images.splice(removedIndex, 1);
+  const nextImage = state.images[removedIndex] || state.images[removedIndex - 1];
+  state.activeImageId = nextImage?.id || null;
+  setActiveImage(state.activeImageId);
+  savePersistentState();
+  showToast(translations[state.lang].imageDeleted);
 }
 
 function normalizeRotation(value) {
@@ -660,6 +707,7 @@ function resetWorkspace() {
   $("#zoomLabel").textContent = "100%";
   updateRotationControls();
   $("#canvasEmpty").hidden = false;
+  updateImageActions();
   renderThumbnails();
   refreshScaleText();
   $("#resultPixels").textContent = translations[state.lang].drawLineHint;
@@ -1030,6 +1078,7 @@ $("#projectFileInput").addEventListener("change", async (event) => {
 });
 $("#calibrationButton").addEventListener("click", () => setMode("calibration"));
 $("#measureButton").addEventListener("click", () => setMode("measure"));
+$("#deleteImageButton").addEventListener("click", removeActiveImage);
 $("#referenceValue").addEventListener("input", () => { refreshScaleText(); savePersistentState(); });
 $("#calibrationUnit").addEventListener("change", () => { refreshScaleText(); savePersistentState(); });
 $("#persistentMode").addEventListener("change", (event) => {

@@ -21,4 +21,6 @@ Very large images may exceed the browser's local storage limit; use **Save proje
 Hold **Shift** while drawing or editing a line to constrain it to 0° (horizontal) or 90° (vertical).
 
 Rotate the active image with the left/right quarter-turn buttons or use the rotation slider for any angle. The rotation is kept with the image in persistent mode and in project files.
+
+Use the trash icon above the canvas to remove the active image. The next image is selected automatically, or the empty workspace is shown when no image remains.
 # measure-image
