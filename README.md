@@ -19,4 +19,6 @@ Use **Save project** to download a portable JSON project file containing the ima
 Very large images may exceed the browser's local storage limit; use **Save project** as an external backup in that case.
 
 Hold **Shift** while drawing or editing a line to constrain it to 0° (horizontal) or 90° (vertical).
+
+Rotate the active image with the left/right quarter-turn buttons or use the rotation slider for any angle. The rotation is kept with the image in persistent mode and in project files.
 # measure-image

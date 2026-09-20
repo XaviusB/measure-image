@@ -109,9 +109,14 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .button-secondary { background: #fff; color: var(--purple); border: 1px solid #d9d3fa; }
 .button-danger { color: #fff; background: #bd5964; }
 .button-danger:hover { background: #a94450; }
-.canvas-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px 13px; }
+.canvas-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px 13px; flex-wrap: wrap; }
 .image-meta { display: flex; align-items: center; gap: 7px; color: #9b9ca9; font: 9px "DM Mono", monospace; }
 .meta-divider { color: #d2d1d9; }
+.rotation-controls { display: flex; align-items: center; gap: 6px; color: #9b9ca9; font: 9px "DM Mono", monospace; }
+.rotation-controls button { border: 0; background: transparent; color: #7d7e8e; font-size: 17px; padding: 0; line-height: 1; }
+.rotation-controls button:hover { color: var(--purple); }
+.rotation-controls input { width: 78px; accent-color: var(--purple); height: 3px; }
+.rotation-controls output { min-width: 32px; color: var(--purple); text-align: right; }
 .zoom-controls { display: flex; align-items: center; gap: 8px; }
 .zoom-controls button { border: 0; background: transparent; color: #7d7e8e; font-size: 18px; padding: 0; line-height: 1; }
 .zoom-controls input { width: 70px; accent-color: var(--purple); height: 3px; }

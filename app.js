@@ -13,7 +13,7 @@ const translations = {
     cancel: "Cancel", confirmReset: "Reset everything", projectSaved: "Project saved.", projectRestored: "Project restored.",
     projectSaveFailed: "Project could not be saved.", projectInvalid: "This project file is invalid.",
     resetDone: "Workspace reset.",
-    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom · Hold Shift for straight lines", dropImage: "Drop an image here", noImageSelected: "No image selected",
+    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom · Hold Shift for straight lines", rotation: "Rotation", rotateLeft: "Rotate left", rotateRight: "Rotate right", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
@@ -33,7 +33,7 @@ const translations = {
     cancel: "Annuler", confirmReset: "Tout supprimer", projectSaved: "Projet sauvegardé.", projectRestored: "Projet restauré.",
     projectSaveFailed: "Le projet n’a pas pu être sauvegardé.", projectInvalid: "Ce fichier projet est invalide.",
     resetDone: "Espace réinitialisé.",
-    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer · Maintenez Shift pour une ligne droite", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
+    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer · Maintenez Shift pour une ligne droite", rotation: "Rotation", rotateLeft: "Tourner vers la gauche", rotateRight: "Tourner vers la droite", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
@@ -98,6 +98,7 @@ function makeImage(file, url, id = null) {
       width: image.naturalWidth,
       height: image.naturalHeight,
       fitScale: 1,
+      rotation: 0,
       calibrationLine: null,
       measurements: []
     });
@@ -140,6 +141,7 @@ async function serializeImage(image) {
     width: image.width,
     height: image.height,
     dataUrl: image.dataUrl || await urlToDataUrl(image.url),
+    rotation: image.rotation || 0,
     calibrationLine: image.calibrationLine || null,
     measurements: image.measurements || []
   };
@@ -203,6 +205,7 @@ async function loadPersistentState() {
         }
         const image = await makeImage(null, savedImage.dataUrl, savedImage.id);
         image.name = savedImage.name || "Saved image";
+        image.rotation = Number(savedImage.rotation) || 0;
         image.calibrationLine = savedImage.calibrationLine || null;
         image.measurements = normalizedMeasurements(savedImage.measurements);
         return image;
@@ -240,17 +243,22 @@ function resizeCanvas() {
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   const image = activeImage();
   if (image) {
-    image.fitScale = Math.min((rect.width - 70) / image.width, (rect.height - 70) / image.height);
+    const angle = (image.rotation || 0) * Math.PI / 180;
+    const boundsWidth = Math.abs(image.width * Math.cos(angle)) + Math.abs(image.height * Math.sin(angle));
+    const boundsHeight = Math.abs(image.width * Math.sin(angle)) + Math.abs(image.height * Math.cos(angle));
+    image.fitScale = Math.min((rect.width - 70) / boundsWidth, (rect.height - 70) / boundsHeight);
     draw();
   }
 }
 
 function imageTransform(image) {
   const scale = image.fitScale * state.zoom;
+  const angle = (image.rotation || 0) * Math.PI / 180;
   return {
     scale,
-    x: canvas.clientWidth / 2 - image.width * scale / 2 + state.pan.x,
-    y: canvas.clientHeight / 2 - image.height * scale / 2 + state.pan.y
+    angle,
+    centerX: canvas.clientWidth / 2 + state.pan.x,
+    centerY: canvas.clientHeight / 2 + state.pan.y
   };
 }
 
@@ -258,14 +266,28 @@ function toImagePoint(point) {
   const image = activeImage();
   if (!image) return point;
   const transform = imageTransform(image);
-  return { x: (point.x - transform.x) / transform.scale, y: (point.y - transform.y) / transform.scale };
+  const cos = Math.cos(transform.angle);
+  const sin = Math.sin(transform.angle);
+  const x = (point.x - transform.centerX) / transform.scale;
+  const y = (point.y - transform.centerY) / transform.scale;
+  return {
+    x: x * cos + y * sin + image.width / 2,
+    y: -x * sin + y * cos + image.height / 2
+  };
 }
 
 function fromImagePoint(point) {
   const image = activeImage();
   if (!image) return point;
   const transform = imageTransform(image);
-  return { x: point.x * transform.scale + transform.x, y: point.y * transform.scale + transform.y };
+  const cos = Math.cos(transform.angle);
+  const sin = Math.sin(transform.angle);
+  const x = (point.x - image.width / 2) * transform.scale;
+  const y = (point.y - image.height / 2) * transform.scale;
+  return {
+    x: x * cos - y * sin + transform.centerX,
+    y: x * sin + y * cos + transform.centerY
+  };
 }
 
 function drawLine(line, color, width = 2, dashed = false) {
@@ -339,10 +361,12 @@ function draw() {
   if (!image) return;
   const transform = imageTransform(image);
   ctx.save();
+  ctx.translate(transform.centerX, transform.centerY);
+  ctx.rotate(transform.angle);
   ctx.shadowColor = "rgba(29,27,45,.17)";
   ctx.shadowBlur = 22;
   ctx.shadowOffsetY = 8;
-  ctx.drawImage(image.image, transform.x, transform.y, image.width * transform.scale, image.height * transform.scale);
+  ctx.drawImage(image.image, -image.width * transform.scale / 2, -image.height * transform.scale / 2, image.width * transform.scale, image.height * transform.scale);
   ctx.restore();
   const shownCalibration = state.currentLine && state.mode === "calibration"
     ? state.currentLine
@@ -578,11 +602,32 @@ function setActiveImage(id) {
   $("#resultPixels").textContent = translations[state.lang].drawLineHint;
   $("#zoomRange").value = 100;
   $("#zoomLabel").textContent = "100%";
+  updateRotationControls();
   renderThumbnails();
   renderMeasurements();
   resizeCanvas();
   refreshScaleText();
   draw();
+}
+
+function normalizeRotation(value) {
+  const normalized = ((value + 180) % 360 + 360) % 360 - 180;
+  return normalized === -180 && value > 0 ? 180 : normalized;
+}
+
+function updateRotationControls() {
+  const rotation = activeImage()?.rotation || 0;
+  $("#rotationRange").value = rotation;
+  $("#rotationLabel").textContent = `${rotation}°`;
+}
+
+function rotateImage(delta) {
+  const image = activeImage();
+  if (!image) return;
+  image.rotation = normalizeRotation((image.rotation || 0) + delta);
+  updateRotationControls();
+  resizeCanvas();
+  savePersistentState();
 }
 
 function resetWorkspace() {
@@ -613,6 +658,7 @@ function resetWorkspace() {
   $("#measurementUnit").value = "cm";
   $("#zoomRange").value = 100;
   $("#zoomLabel").textContent = "100%";
+  updateRotationControls();
   $("#canvasEmpty").hidden = false;
   renderThumbnails();
   refreshScaleText();
@@ -682,6 +728,7 @@ async function restoreProject(file) {
       }
       const image = await makeImage(null, savedImage.dataUrl, savedImage.id);
       image.name = savedImage.name || "Restored image";
+      image.rotation = Number(savedImage.rotation) || 0;
       image.calibrationLine = savedImage.calibrationLine || null;
       image.measurements = normalizedMeasurements(savedImage.measurements);
       return image;
@@ -793,6 +840,13 @@ function updateLanguage(lang) {
   $$("[data-i18n]").forEach((element) => {
     const key = element.dataset.i18n;
     if (translations[lang][key]) element.textContent = translations[lang][key];
+  });
+  $$("[data-i18n-title]").forEach((element) => {
+    const key = element.dataset.i18nTitle;
+    if (translations[lang][key]) {
+      element.title = translations[lang][key];
+      element.setAttribute("aria-label", translations[lang][key]);
+    }
   });
   $$(".language-button").forEach((button) => button.classList.toggle("active", button.dataset.language === lang));
   $("#measurementUnit").setAttribute("aria-label", translations[lang].measurementUnit);
@@ -1006,10 +1060,34 @@ $("#zoomRange").addEventListener("input", (event) => {
   $("#zoomLabel").textContent = `${event.target.value}%`;
   draw();
 });
+$("#rotationRange").addEventListener("input", (event) => {
+  const image = activeImage();
+  if (!image) return;
+  image.rotation = normalizeRotation(Number(event.target.value));
+  updateRotationControls();
+  resizeCanvas();
+  savePersistentState();
+});
+$("#rotateLeft").addEventListener("click", () => rotateImage(-90));
+$("#rotateRight").addEventListener("click", () => rotateImage(90));
 $("#zoomOut").addEventListener("click", () => { state.zoom = Math.max(.25, state.zoom - .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#zoomIn").addEventListener("click", () => { state.zoom = Math.min(3, state.zoom + .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#fitButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; draw(); });
-$("#resetButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; state.currentLine = null; state.lastMeasurementPixels = null; setMode("pan"); $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; updateCurrentResult(); $("#resultPixels").textContent = translations[state.lang].drawLineHint; draw(); });
+$("#resetButton").addEventListener("click", () => {
+  state.zoom = 1;
+  state.pan = { x: 0, y: 0 };
+  state.currentLine = null;
+  state.lastMeasurementPixels = null;
+  if (activeImage()) activeImage().rotation = 0;
+  setMode("pan");
+  $("#zoomRange").value = 100;
+  $("#zoomLabel").textContent = "100%";
+  updateRotationControls();
+  updateCurrentResult();
+  $("#resultPixels").textContent = translations[state.lang].drawLineHint;
+  resizeCanvas();
+  savePersistentState();
+});
 $$(".language-button").forEach((button) => button.addEventListener("click", () => updateLanguage(button.dataset.language)));
 $("#measurementUnit").addEventListener("change", (event) => setMeasurementUnit(event.target.value));
 window.addEventListener("resize", resizeCanvas);
