@@ -757,8 +757,14 @@ canvas.addEventListener("pointerleave", () => {
 
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
+  const point = pointerPosition(event);
+  const imagePoint = toImagePoint(point);
   const nextZoom = Math.max(.25, Math.min(3, state.zoom + (event.deltaY > 0 ? -.1 : .1)));
+  if (nextZoom === state.zoom) return;
   state.zoom = Number(nextZoom.toFixed(2));
+  const zoomedPoint = fromImagePoint(imagePoint);
+  state.pan.x += point.x - zoomedPoint.x;
+  state.pan.y += point.y - zoomedPoint.y;
   $("#zoomRange").value = Math.round(state.zoom * 100);
   $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`;
   draw();
