@@ -31,25 +31,17 @@ button { cursor: pointer; }
 .brand-caption { color: #77798e; font: 500 8px/1 "DM Mono", monospace; letter-spacing: .7px; text-transform: uppercase; margin-top: 5px; }
 .primary-nav { flex: 1; }
 .nav-label { color: #74778d; font: 500 10px/1 "DM Mono", monospace; letter-spacing: 1.1px; text-transform: uppercase; padding: 0 14px 12px; }
-.nav-label-spaced { margin-top: 28px; }
 .nav-item { width: 100%; display: flex; align-items: center; gap: 12px; color: #9899ab; background: transparent; border: 0; border-radius: 8px; text-align: left; padding: 11px 14px; font-size: 13px; margin-bottom: 3px; transition: .2s ease; }
 .nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
 .nav-item.active { color: #fff; background: #292b40; box-shadow: inset 3px 0 #957df1; }
 .nav-icon { font-size: 19px; width: 17px; text-align: center; color: #a58bf7; line-height: 1; }
 .nav-count { margin-left: auto; font: 500 10px "DM Mono", monospace; color: #aaa2df; background: #383258; border-radius: 20px; min-width: 21px; text-align: center; padding: 3px 5px; }
 .sidebar-bottom { margin-top: auto; }
-.tip-card { margin: 12px 7px 20px; border: 1px solid #303247; border-radius: 9px; padding: 14px; background: linear-gradient(145deg, rgba(114,84,217,.16), rgba(33,35,54,.3)); }
+.tip-card { width: calc(100% - 14px); margin: 12px 7px 20px; border: 1px solid #303247; border-radius: 9px; padding: 14px; color: inherit; background: linear-gradient(145deg, rgba(114,84,217,.16), rgba(33,35,54,.3)); text-align: left; font: inherit; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+.tip-card:hover, .tip-card:focus-visible { border-color: #554a83; background: linear-gradient(145deg, rgba(114,84,217,.25), rgba(33,35,54,.45)); outline: 0; }
 .tip-icon { color: #a48eff; font-size: 18px; margin-bottom: 10px; }
 .tip-title { font-size: 12px; font-weight: 700; margin-bottom: 5px; }
-.tip-card p { color: #9899ae; font-size: 10px; line-height: 1.55; margin: 0; }
-.user-row { border-top: 1px solid #303247; padding: 17px 7px 2px; display: flex; align-items: center; gap: 9px; }
-.avatar, .top-avatar { display: grid; place-items: center; border-radius: 50%; background: #e4b39a; color: #6b3e31; font-size: 10px; font-weight: 700; }
-.avatar { width: 30px; height: 30px; }
-.user-copy { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
-.user-copy strong { font-size: 11px; font-weight: 600; }
-.user-copy span { color: #777a90; font-size: 9px; }
-.more-button { color: #777a90; border: 0; background: none; font-size: 13px; letter-spacing: 2px; padding: 5px 0; }
-
+.tip-card p { min-height: 31px; color: #9899ae; font-size: 10px; line-height: 1.55; margin: 0; }
 .main-content { min-width: 0; flex: 1; }
 .topbar { height: 68px; display: flex; align-items: center; justify-content: space-between; padding: 0 46px; border-bottom: 1px solid var(--line); background: #fff; }
 .breadcrumb { color: #9a9baa; font-size: 11px; display: flex; gap: 10px; align-items: center; }
@@ -60,7 +52,6 @@ button { cursor: pointer; }
 .language-button { color: #aaa9b7; background: transparent; border: 0; border-radius: 4px; padding: 4px 7px; font: 600 9px "DM Mono", monospace; }
 .language-button.active { color: var(--purple); background: var(--purple-pale); }
 .help-button { border: 1px solid #e3e2ea; color: #8f90a0; border-radius: 50%; width: 22px; height: 22px; line-height: 18px; background: #fff; font-size: 12px; }
-.top-avatar { width: 27px; height: 27px; font-size: 9px; }
 .content-wrap { max-width: 1320px; padding: 38px 46px 18px; margin: auto; }
 .page-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px; }
 .eyebrow, .panel-kicker, .result-label { color: var(--purple); font: 500 9px "DM Mono", monospace; letter-spacing: 1.1px; }
@@ -101,8 +92,6 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .canvas-wrap { margin: 0 14px; height: min(47vw, 530px); min-height: 335px; position: relative; background: var(--canvas); border-radius: 7px; overflow: hidden; }
 .canvas-wrap::before { content: ""; position: absolute; inset: 0; opacity: .34; background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 32px 32px; pointer-events: none; }
 #measureCanvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
-.canvas-hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); color: #9a9aa8; font: 9px "DM Mono", monospace; background: rgba(255,255,255,.75); border: 1px solid rgba(220,220,229,.8); border-radius: 20px; padding: 6px 10px; white-space: nowrap; pointer-events: none; }
-.canvas-hint span:first-child { color: var(--purple); font-size: 13px; margin-right: 5px; }
 .canvas-empty { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(244,245,249,.92); gap: 6px; }
 .canvas-empty[hidden] { display: none; }
 .empty-icon { display: grid; place-items: center; border: 1px dashed #b5afe9; border-radius: 50%; color: var(--purple); font-size: 25px; width: 48px; height: 48px; margin-bottom: 8px; }
@@ -174,7 +163,7 @@ h1 { margin: 0; font: 800 clamp(29px, 3vw, 40px)/1.1 "Manrope", sans-serif; lett
 .measurement-name { color: #626372; flex: 1; font-size: 10px; }
 .measurement-value { color: var(--purple); font: 500 10px "DM Mono", monospace; }
 .delete-measurement { border: 0; background: none; color: #b6b6c0; padding: 0; font-size: 14px; }
-.page-footer { display: flex; justify-content: space-between; color: #acaebb; font: 9px "DM Mono", monospace; margin-top: 22px; }
+.page-footer { display: flex; justify-content: flex-end; color: #acaebb; font: 9px "DM Mono", monospace; margin-top: 22px; }
 .page-footer button { border: 0; padding: 0; background: none; color: var(--purple); font: inherit; }
 .toast { position: fixed; right: 24px; bottom: 24px; color: #fff; background: #24263a; border-radius: 6px; box-shadow: 0 8px 25px rgba(15,15,30,.2); padding: 11px 15px; font-size: 11px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .25s; }
 .toast.show { transform: translateY(0); opacity: 1; }

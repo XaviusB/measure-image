@@ -4,8 +4,17 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const translations = {
   en: {
     workspaceLabel: "Workspace", overview: "Overview", addImages: "Add images", savedMeasurements: "Saved measurements",
-    settingsLabel: "Settings", preferences: "Preferences", tipTitle: "Quick tip",
-    tipText: "Calibrate once, then measure as many times as you like.", readyToMeasure: "READY TO MEASURE",
+    tipTitle: "Quick tip", nextTip: "Show next tip",
+    quickTips: [
+      "Calibrate once, then measure as many times as you like.",
+      "Drag the image to pan and use the mouse wheel to zoom around the cursor.",
+      "Hold Shift while drawing to create a horizontal or vertical line.",
+      "Use the rotation controls to turn the image without losing your measurements.",
+      "Enable Persistent mode to keep images, calibration, and measurements in this browser.",
+      "Drag a line endpoint to edit it, or drag its middle to move the whole line.",
+      "Your images stay on your device; export a project to back it up."
+    ],
+    readyToMeasure: "READY TO MEASURE",
     heroTitle: "Measure with confidence.", heroSubtitle: "Turn any image into a precise measuring surface.",
     persistentMode: "Persistent mode", persistentHint: "Keep your work saved", saveProject: "Save project", restoreProject: "Restore project",
     resetWorkspace: "Reset workspace", uploadImages: "Upload images",
@@ -13,19 +22,28 @@ const translations = {
     cancel: "Cancel", confirmReset: "Reset everything", projectSaved: "Project saved.", projectRestored: "Project restored.",
     projectSaveFailed: "Project could not be saved.", projectInvalid: "This project file is invalid.",
     resetDone: "Workspace reset.",
-    imageCanvas: "IMAGE CANVAS", canvasHint: "Drag to pan · Scroll to zoom · Hold Shift for straight lines", rotation: "Rotation", rotateLeft: "Rotate left", rotateRight: "Rotate right", deleteImage: "Delete image", imageDeleted: "Image deleted.", dropImage: "Drop an image here", noImageSelected: "No image selected",
+    imageCanvas: "IMAGE CANVAS", rotation: "Rotation", rotateLeft: "Rotate left", rotateRight: "Rotate right", deleteImage: "Delete image", imageDeleted: "Image deleted.", dropImage: "Drop an image here", noImageSelected: "No image selected",
     orBrowse: "or browse from your device", chooseImage: "Choose image", calibration: "CALIBRATION",
     setScale: "Set your scale", set: "Set", calibrationDescription: "Draw a line over a known distance to create your reference.",
     redoCalibration: "Redo calibration", drawReference: "Draw a new reference line", knownDistance: "Known distance",
     currentScale: "Current scale",     measure: "MEASURE", measureAnything: "Measure anything", measurementUnit: "Measurement unit",
     measureDescription: "Draw freely on the image. Your result appears here.", currentMeasurement: "CURRENT MEASUREMENT", drawLineHint: "Draw a line to begin",
     startMeasuring: "Start measuring", noMeasurements: "No saved measurements yet.",
-    shortcut: "Tip: hold space to pan the canvas", localOnly: "Your images stay on your device", privacy: "Privacy"
+    privacy: "Privacy"
   },
   fr: {
     workspaceLabel: "Espace de travail", overview: "Vue d’ensemble", addImages: "Ajouter des images", savedMeasurements: "Mesures enregistrées",
-    settingsLabel: "Réglages", preferences: "Préférences", tipTitle: "Astuce",
-    tipText: "Calibrez une fois, puis mesurez autant de fois que nécessaire.", readyToMeasure: "PRÊT À MESURER",
+    tipTitle: "Astuce", nextTip: "Afficher l’astuce suivante",
+    quickTips: [
+      "Calibrez une fois, puis mesurez autant de fois que nécessaire.",
+      "Faites glisser l’image pour la déplacer et utilisez la molette pour zoomer autour du curseur.",
+      "Maintenez Shift pendant le tracé pour créer une ligne horizontale ou verticale.",
+      "Utilisez les contrôles de rotation pour tourner l’image sans perdre vos mesures.",
+      "Activez le mode persistant pour conserver les images, l’étalonnage et les mesures dans ce navigateur.",
+      "Faites glisser une extrémité pour modifier une ligne ou son milieu pour la déplacer entièrement.",
+      "Vos images restent sur votre appareil ; exportez un projet pour créer une sauvegarde."
+    ],
+    readyToMeasure: "PRÊT À MESURER",
     heroTitle: "Mesurez en toute confiance.", heroSubtitle: "Transformez chaque image en surface de mesure précise.",
     persistentMode: "Mode persistant", persistentHint: "Conserver votre travail", saveProject: "Sauvegarder le projet", restoreProject: "Restaurer le projet",
     resetWorkspace: "Réinitialiser l’espace", uploadImages: "Importer des images",
@@ -33,14 +51,14 @@ const translations = {
     cancel: "Annuler", confirmReset: "Tout supprimer", projectSaved: "Projet sauvegardé.", projectRestored: "Projet restauré.",
     projectSaveFailed: "Le projet n’a pas pu être sauvegardé.", projectInvalid: "Ce fichier projet est invalide.",
     resetDone: "Espace réinitialisé.",
-    imageCanvas: "ZONE IMAGE", canvasHint: "Glisser pour déplacer · Molette pour zoomer · Maintenez Shift pour une ligne droite", rotation: "Rotation", rotateLeft: "Tourner vers la gauche", rotateRight: "Tourner vers la droite", deleteImage: "Supprimer l’image", imageDeleted: "Image supprimée.", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
+    imageCanvas: "ZONE IMAGE", rotation: "Rotation", rotateLeft: "Tourner vers la gauche", rotateRight: "Tourner vers la droite", deleteImage: "Supprimer l’image", imageDeleted: "Image supprimée.", dropImage: "Déposez une image ici", noImageSelected: "Aucune image sélectionnée",
     orBrowse: "ou parcourez votre appareil", chooseImage: "Choisir une image", calibration: "ÉTALONNAGE",
     setScale: "Définir l’échelle", set: "Défini", calibrationDescription: "Tracez une ligne sur une distance connue pour créer votre référence.",
     redoCalibration: "Refaire l’étalonnage", drawReference: "Tracer une nouvelle ligne de référence", knownDistance: "Distance connue",
     currentScale: "Échelle actuelle",     measure: "MESURE", measureAnything: "Mesurez librement", measurementUnit: "Unité de mesure",
     measureDescription: "Tracez sur l’image. Votre résultat apparaîtra ici.", currentMeasurement: "MESURE ACTUELLE", drawLineHint: "Tracez une ligne pour commencer",
     startMeasuring: "Commencer à mesurer", noMeasurements: "Aucune mesure enregistrée.",
-    shortcut: "Astuce : maintenez Espace pour déplacer la zone", localOnly: "Vos images restent sur votre appareil", privacy: "Confidentialité"
+    privacy: "Confidentialité"
   }
 };
 
@@ -73,6 +91,7 @@ const ctx = canvas.getContext("2d");
 const canvasWrap = $("#canvasWrap");
 let toastTimer;
 let persistenceVersion = 0;
+let quickTipIndex = 0;
 
 function demoSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
@@ -882,6 +901,18 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
+function renderQuickTip() {
+  const tips = translations[state.lang].quickTips;
+  quickTipIndex %= tips.length;
+  $("#quickTipText").textContent = tips[quickTipIndex];
+  $("#quickTips").setAttribute("aria-label", translations[state.lang].nextTip);
+}
+
+function showNextQuickTip() {
+  quickTipIndex += 1;
+  renderQuickTip();
+}
+
 function updateLanguage(lang) {
   state.lang = lang;
   document.documentElement.lang = lang;
@@ -897,6 +928,7 @@ function updateLanguage(lang) {
     }
   });
   $$(".language-button").forEach((button) => button.classList.toggle("active", button.dataset.language === lang));
+  renderQuickTip();
   $("#measurementUnit").setAttribute("aria-label", translations[lang].measurementUnit);
   if (!activeImage()) $("#activeImageName").textContent = translations[lang].noImageSelected;
   renderMeasurements();
@@ -1139,6 +1171,7 @@ $("#resetButton").addEventListener("click", () => {
 });
 $$(".language-button").forEach((button) => button.addEventListener("click", () => updateLanguage(button.dataset.language)));
 $("#measurementUnit").addEventListener("change", (event) => setMeasurementUnit(event.target.value));
+$("#quickTips").addEventListener("click", showNextQuickTip);
 window.addEventListener("resize", resizeCanvas);
 canvasWrap.addEventListener("dragover", (event) => { event.preventDefault(); canvasWrap.classList.add("drag-over"); });
 canvasWrap.addEventListener("dragleave", () => canvasWrap.classList.remove("drag-over"));
@@ -1164,4 +1197,5 @@ document.addEventListener("keydown", (event) => {
   setActiveImage(state.activeImageId);
   renderMeasurements();
   updateLanguage("en");
+  setInterval(showNextQuickTip, 5000);
 })();

@@ -34,23 +34,14 @@
             <span class="nav-icon" aria-hidden="true">◌</span><span data-i18n="savedMeasurements">Saved measurements</span>
             <span class="nav-count" id="savedMeasurementCount">0</span>
           </button>
-          <div class="nav-label nav-label-spaced" data-i18n="settingsLabel">Settings</div>
-          <button class="nav-item" type="button" id="preferencesNav">
-            <span class="nav-icon" aria-hidden="true">⚙</span><span data-i18n="preferences">Preferences</span>
-          </button>
         </nav>
 
         <div class="sidebar-bottom">
-          <div class="tip-card">
+          <button class="tip-card" id="quickTips" type="button" aria-label="Show next tip">
             <div class="tip-icon">✦</div>
             <div class="tip-title" data-i18n="tipTitle">Quick tip</div>
-            <p data-i18n="tipText">Calibrate once, then measure as many times as you like.</p>
-          </div>
-          <div class="user-row">
-            <div class="avatar">AM</div>
-            <div class="user-copy"><strong>Alex Morgan</strong><span>Personal workspace</span></div>
-            <button class="more-button" type="button" aria-label="More options">•••</button>
-          </div>
+            <p id="quickTipText" aria-live="polite">Calibrate once, then measure as many times as you like.</p>
+          </button>
         </div>
       </aside>
 
@@ -63,7 +54,6 @@
               <button type="button" class="language-button" data-language="fr">FR</button>
             </div>
             <button type="button" class="help-button" aria-label="Help">?</button>
-            <div class="top-avatar">AM</div>
           </div>
         </header>
 
@@ -108,7 +98,6 @@
                 </div>
                 <div class="canvas-wrap" id="canvasWrap">
                   <canvas id="measureCanvas" aria-label="Interactive image measurement canvas"></canvas>
-                  <div class="canvas-hint" id="canvasHint"><span>↔</span><span data-i18n="canvasHint">Drag to pan · Scroll to zoom</span></div>
                   <div class="canvas-empty" id="canvasEmpty" hidden>
                     <div class="empty-icon">↥</div>
                     <strong data-i18n="dropImage">Drop an image here</strong>
@@ -188,7 +177,7 @@
               </div>
             </aside>
           </section>
-          <footer class="page-footer"><span>⌘ <span data-i18n="shortcut">Tip: hold space to pan the canvas</span></span><span><span data-i18n="localOnly">Your images stay on your device</span> · <button type="button" data-i18n="privacy">Privacy</button></span></footer>
+          <footer class="page-footer"><button type="button" data-i18n="privacy">Privacy</button></footer>
         </div>
       </main>
     </div>
