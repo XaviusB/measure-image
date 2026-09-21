@@ -30,6 +30,7 @@ const translations = {
     currentScale: "Current scale",     measure: "MEASURE", measureAnything: "Measure anything", measurementUnit: "Measurement unit",
     measureDescription: "Draw freely on the image. Your result appears here.", currentMeasurement: "CURRENT MEASUREMENT", drawLineHint: "Draw a line to begin",
     startMeasuring: "Start measuring", noMeasurements: "No saved measurements yet.",
+    showCalibration: "Show calibration line", showCalibrationHint: "Display the reference on the image",
     privacy: "Privacy"
   },
   fr: {
@@ -59,6 +60,7 @@ const translations = {
     currentScale: "Échelle actuelle",     measure: "MESURE", measureAnything: "Mesurez librement", measurementUnit: "Unité de mesure",
     measureDescription: "Tracez sur l’image. Votre résultat apparaîtra ici.", currentMeasurement: "MESURE ACTUELLE", drawLineHint: "Tracez une ligne pour commencer",
     startMeasuring: "Commencer à mesurer", noMeasurements: "Aucune mesure enregistrée.",
+    showCalibration: "Afficher la ligne d’étalonnage", showCalibrationHint: "Afficher la référence sur l’image",
     privacy: "Confidentialité"
   }
 };
@@ -122,6 +124,7 @@ function makeImage(file, url, id = null) {
       imageLocked: false,
       calibrationLocked: false,
       calibrationLine: null,
+      calibrationVisible: true,
       measurements: []
     });
     image.onerror = reject;
@@ -167,6 +170,7 @@ async function serializeImage(image) {
     imageLocked: image.imageLocked === true,
     calibrationLocked: image.calibrationLocked === true,
     calibrationLine: image.calibrationLine || null,
+    calibrationVisible: image.calibrationVisible !== false,
     measurements: image.measurements || []
   };
 }
@@ -234,6 +238,7 @@ async function loadPersistentState() {
         image.calibrationLine = savedImage.calibrationLine || null;
         image.imageLocked = savedImage.imageLocked === true;
         image.calibrationLocked = savedImage.calibrationLocked === true && Boolean(image.calibrationLine);
+        image.calibrationVisible = savedImage.calibrationVisible !== false;
         image.measurements = normalizedMeasurements(savedImage.measurements);
         return image;
       }));
@@ -351,6 +356,27 @@ function drawLine(line, color, width = 2, dashed = false) {
   ctx.restore();
 }
 
+function drawCalibrationLine(line) {
+  if (!line) return;
+  drawLine(line, "#7154d9", 3, true);
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const length = Math.hypot(dx, dy);
+  if (!length) return;
+  const normal = { x: -dy / length, y: dx / length };
+  const capLength = 16;
+  ctx.save();
+  ctx.strokeStyle = "#7154d9";
+  ctx.lineWidth = 3;
+  for (const point of [line.start, line.end]) {
+    ctx.beginPath();
+    ctx.moveTo(point.x - normal.x * capLength / 2, point.y - normal.y * capLength / 2);
+    ctx.lineTo(point.x + normal.x * capLength / 2, point.y + normal.y * capLength / 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawMeasurementLabel(line, color, text) {
   if (!line || text === "—") return;
   const dx = line.end.x - line.start.x;
@@ -403,8 +429,10 @@ function draw() {
   ctx.restore();
   const shownCalibration = state.currentLine && state.mode === "calibration"
     ? state.currentLine
-    : imageLineToCanvas(state.calibrationLine);
-  drawLine(shownCalibration, "#7154d9", 2.5, state.mode === "calibration");
+    : image.calibrationVisible !== false
+      ? imageLineToCanvas(state.calibrationLine)
+      : null;
+  drawCalibrationLine(shownCalibration);
   if (state.persistent) {
     state.measurements.forEach((measurement) => {
       if (measurement.line) {
@@ -672,6 +700,7 @@ function updateImageActions() {
   $("#deleteImageButton").disabled = !image;
   $("#toggleImageLock").disabled = !image;
   $("#toggleCalibrationLock").disabled = !image || !hasCalibration;
+  $("#toggleCalibrationVisibility").disabled = !image || !hasCalibration;
   $("#calibrationButton").disabled = !image || image.calibrationLocked;
   $("#referenceValue").disabled = !image || image.calibrationLocked;
   $("#calibrationUnit").disabled = !image || image.calibrationLocked;
@@ -685,6 +714,7 @@ function updateImageActions() {
   $("#toggleCalibrationLock").setAttribute("aria-label", translations[state.lang][image?.calibrationLocked ? "unlockCalibration" : "lockCalibration"]);
   $("#toggleImageLock").title = translations[state.lang][image?.imageLocked ? "unlockImage" : "lockImage"];
   $("#toggleCalibrationLock").title = translations[state.lang][image?.calibrationLocked ? "unlockCalibration" : "lockCalibration"];
+  $("#toggleCalibrationVisibility").checked = image?.calibrationVisible !== false;
 }
 
 function removeActiveImage() {
@@ -825,6 +855,7 @@ async function restoreProject(file) {
       image.calibrationLine = savedImage.calibrationLine || null;
       image.imageLocked = savedImage.imageLocked === true;
       image.calibrationLocked = savedImage.calibrationLocked === true && Boolean(image.calibrationLine);
+      image.calibrationVisible = savedImage.calibrationVisible !== false;
       image.measurements = normalizedMeasurements(savedImage.measurements);
       return image;
     }));
@@ -1164,6 +1195,13 @@ $("#toggleCalibrationLock").addEventListener("click", () => {
   setMode("pan");
   updateImageActions();
   updateCanvasCursor();
+  savePersistentState();
+});
+$("#toggleCalibrationVisibility").addEventListener("change", (event) => {
+  const image = activeImage();
+  if (!image?.calibrationLine) return;
+  image.calibrationVisible = event.target.checked;
+  draw();
   savePersistentState();
 });
 $("#referenceValue").addEventListener("input", () => {
