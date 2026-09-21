@@ -1317,8 +1317,8 @@ $("#rotationRange").addEventListener("input", (event) => {
   resizeCanvas();
   savePersistentState();
 });
-$("#rotateLeft").addEventListener("click", () => rotateImage(-90));
-$("#rotateRight").addEventListener("click", () => rotateImage(90));
+$("#rotateLeft").addEventListener("click", () => rotateImage(-1));
+$("#rotateRight").addEventListener("click", () => rotateImage(1));
 $("#zoomOut").addEventListener("click", () => { state.zoom = Math.max(.25, state.zoom - .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#zoomIn").addEventListener("click", () => { state.zoom = Math.min(3, state.zoom + .1); $("#zoomRange").value = state.zoom * 100; $("#zoomLabel").textContent = `${Math.round(state.zoom * 100)}%`; draw(); });
 $("#fitButton").addEventListener("click", () => { state.zoom = 1; state.pan = { x: 0, y: 0 }; $("#zoomRange").value = 100; $("#zoomLabel").textContent = "100%"; draw(); });
