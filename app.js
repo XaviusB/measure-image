@@ -639,6 +639,7 @@ function updateCurrentResult() {
 
 function renderMeasurements() {
   const list = $("#measurementList");
+  const colorPicker = $("#measurementColorPicker");
   $("#savedCount").textContent = state.measurements.length;
   $("#savedMeasurementCount").textContent = state.measurements.length;
   if (!state.measurements.length) {
@@ -647,12 +648,26 @@ function renderMeasurements() {
   }
   list.innerHTML = state.measurements.map((measurement, index) => `
     <div class="measurement-item">
-      <span class="measurement-line" style="--measurement-color: ${measurement.color || "#eb9461"}"></span>
+      <span class="measurement-line" role="button" tabindex="0" data-index="${index}" title="Change measurement color" aria-label="Change measurement color" style="--measurement-color: ${measurement.color || "#eb9461"}"></span>
       <span class="measurement-name">${measurement.name || `Measurement ${String(index + 1).padStart(2, "0")}`}</span>
       <strong class="measurement-value" style="color: ${measurement.color || "#eb9461"}">${formatValue(measurement.value, measurement.unit)}</strong>
       <button type="button" class="delete-measurement" data-index="${index}" aria-label="Delete measurement">×</button>
     </div>
   `).join("");
+  $$(".measurement-line").forEach((line) => {
+    const openColorPicker = () => {
+      colorPicker.dataset.index = line.dataset.index;
+      colorPicker.value = state.measurements[Number(line.dataset.index)].color || "#eb9461";
+      colorPicker.click();
+    };
+    line.addEventListener("click", openColorPicker);
+    line.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openColorPicker();
+      }
+    });
+  });
   $$(".delete-measurement").forEach((button) => button.addEventListener("click", () => {
     state.measurements.splice(Number(button.dataset.index), 1);
     renderMeasurements();
@@ -660,6 +675,16 @@ function renderMeasurements() {
     savePersistentState();
   }));
 }
+
+$("#measurementColorPicker").addEventListener("input", (event) => {
+  const index = Number(event.target.dataset.index);
+  const measurement = state.measurements[index];
+  if (!measurement) return;
+  measurement.color = event.target.value;
+  renderMeasurements();
+  draw();
+  savePersistentState();
+});
 
 function renderThumbnails() {
   const row = $("#thumbnailRow");
