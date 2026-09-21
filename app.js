@@ -155,7 +155,10 @@ function activeImage() {
 function normalizedMeasurements(measurements) {
   return (Array.isArray(measurements) ? measurements : []).map((measurement) => ({
     ...measurement,
-    color: measurement.color || randomMeasurementColor()
+    color: measurement.color || randomMeasurementColor(),
+    labelOffset: measurement.labelOffset && Number.isFinite(measurement.labelOffset.x) && Number.isFinite(measurement.labelOffset.y)
+      ? { x: measurement.labelOffset.x, y: measurement.labelOffset.y }
+      : null
   }));
 }
 
@@ -377,22 +380,40 @@ function drawCalibrationLine(line) {
   ctx.restore();
 }
 
-function drawMeasurementLabel(line, color, text) {
-  if (!line || text === "—") return;
+function measurementLabelGeometry(measurement) {
+  const line = imageLineToCanvas(measurement.line);
+  if (!line) return null;
   const dx = line.end.x - line.start.x;
   const dy = line.end.y - line.start.y;
   const length = Math.hypot(dx, dy);
-  if (!length) return;
-  const normal = { x: -dy / length, y: dx / length };
-  const midpoint = {
-    x: (line.start.x + line.end.x) / 2 + normal.x * 13,
-    y: (line.start.y + line.end.y) / 2 + normal.y * 13
+  if (!length) return null;
+  const imageDx = measurement.line.end.x - measurement.line.start.x;
+  const imageDy = measurement.line.end.y - measurement.line.start.y;
+  const imageLength = Math.hypot(imageDx, imageDy);
+  const defaultOffset = {
+    x: -imageDy / imageLength * 13 / imageTransform(activeImage()).scale,
+    y: imageDx / imageLength * 13 / imageTransform(activeImage()).scale
   };
+  const offset = measurement.labelOffset || defaultOffset;
+  const midpoint = fromImagePoint({
+    x: (measurement.line.start.x + measurement.line.end.x) / 2 + offset.x,
+    y: (measurement.line.start.y + measurement.line.end.y) / 2 + offset.y
+  });
   ctx.save();
   ctx.font = '600 10px "DM Mono", monospace';
-  const paddingX = 6;
-  const height = 18;
-  const width = ctx.measureText(text).width + paddingX * 2;
+  const width = ctx.measureText(formatValue(measurement.value, measurement.unit || state.displayUnit)).width + 12;
+  ctx.restore();
+  return { midpoint, width, height: 18 };
+}
+
+function drawMeasurementLabel(measurement, color, text) {
+  const line = imageLineToCanvas(measurement.line);
+  if (!line || text === "—") return;
+  const geometry = measurementLabelGeometry(measurement);
+  if (!geometry) return;
+  const { midpoint, width, height } = geometry;
+  ctx.save();
+  ctx.font = '600 10px "DM Mono", monospace';
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.roundRect(midpoint.x - width / 2, midpoint.y - height / 2, width, height, 4);
@@ -439,7 +460,7 @@ function draw() {
         const color = measurement.color || "#eb9461";
         const canvasLine = imageLineToCanvas(measurement.line);
         drawLine(canvasLine, color, 2.5, false);
-        drawMeasurementLabel(canvasLine, color, formatValue(measurement.value, measurement.unit || state.displayUnit));
+        drawMeasurementLabel(measurement, color, formatValue(measurement.value, measurement.unit || state.displayUnit));
       }
     });
   }
@@ -511,6 +532,10 @@ function measurementHit(point) {
   for (let index = state.measurements.length - 1; index >= 0; index -= 1) {
     const measurement = state.measurements[index];
     if (!measurement.line) continue;
+    const label = measurementLabelGeometry(measurement);
+    if (label && Math.abs(point.x - label.midpoint.x) <= label.width / 2 && Math.abs(point.y - label.midpoint.y) <= label.height / 2) {
+      return { measurement, type: "label" };
+    }
     const line = imageLineToCanvas(measurement.line);
     if (distance(point, line.start) <= 14) return { measurement, type: "start" };
     if (distance(point, line.end) <= 14) return { measurement, type: "end" };
@@ -529,7 +554,7 @@ function updateCanvasCursor(point) {
     return;
   }
   if (state.measurementEdit) {
-    canvas.style.cursor = state.measurementEdit.type === "line" ? "grabbing" : "none";
+    canvas.style.cursor = state.measurementEdit.type === "line" || state.measurementEdit.type === "label" ? "grabbing" : "none";
     return;
   }
   if (state.isPanning) {
@@ -542,6 +567,10 @@ function updateCanvasCursor(point) {
     return;
   }
   if (measurement?.type === "line") {
+    canvas.style.cursor = "move";
+    return;
+  }
+  if (measurement?.type === "label") {
     canvas.style.cursor = "move";
     return;
   }
@@ -1021,7 +1050,8 @@ canvas.addEventListener("pointerdown", (event) => {
         measurement: hit.measurement,
         type: hit.type,
         start: toImagePoint(point),
-        original: cloneLine(hit.measurement.line)
+        original: hit.type === "label" ? null : cloneLine(hit.measurement.line),
+        originalLabelOffset: hit.type === "label" ? (hit.measurement.labelOffset ? { ...hit.measurement.labelOffset } : null) : null
       };
       updateCanvasCursor(point);
       return;
@@ -1076,7 +1106,19 @@ canvas.addEventListener("pointermove", (event) => {
     const edit = state.measurementEdit;
     const measurement = edit.measurement;
     const currentImagePoint = toImagePoint(point);
-    if (edit.type === "start") {
+    if (edit.type === "label") {
+      const lineMidpoint = {
+        x: (measurement.line.start.x + measurement.line.end.x) / 2,
+        y: (measurement.line.start.y + measurement.line.end.y) / 2
+      };
+      measurement.labelOffset = {
+        x: currentImagePoint.x - lineMidpoint.x,
+        y: currentImagePoint.y - lineMidpoint.y
+      };
+      activeImage().measurements = state.measurements;
+      draw();
+    } else if (edit.type === "start") {
+      const currentImagePoint = toImagePoint(point);
       measurement.line.start = orthogonalPoint(measurement.line.end, currentImagePoint, event.shiftKey);
     } else if (edit.type === "end") {
       measurement.line.end = orthogonalPoint(measurement.line.start, currentImagePoint, event.shiftKey);
